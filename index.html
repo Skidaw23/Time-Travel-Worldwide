@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Quantum Nebula Globe Clock – Fully Static Demo</title>
+    <!-- Three.js UMD build (defines global THREE) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- OrbitControls UMD, must be loaded after Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/OrbitControls.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: #fff; }
         canvas { display: block;}
