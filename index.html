@@ -3,18 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantum Nebula Globe Clock – Live Weather Edition</title>
+    <title>Quantum Nebula Globe Clock – Live Demo</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: #fff; }
         canvas { display: block; }
-        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #globe-container { width: 100vw; height: 100vh; position: fixed; z-index: 0; top: 0; left: 0;}
+        #ui-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 2;}
         #search-bar { pointer-events: auto; position: absolute; top: 30px; left: 50%; transform: translateX(-50%); width: 340px; z-index: 100; }
         #search-input { width: 100%; padding: 16px 24px; border: none; border-radius: 30px; 
             background: rgba(255,255,255,0.1); color: #fff; backdrop-filter: blur(15px); 
             box-shadow: 0 8px 32px rgba(0,255,255,0.3); transition: all 0.4s; font-size: 1.2em; }
         #search-input:focus { outline: none; box-shadow: 0 0 40px rgba(0,255,255,0.8); transform: scale(1.05); }
+
+        #suggestions { pointer-events: auto; position: absolute; width: 340px; left: 50%; transform: translateX(-50%); top: 68px;
+            background: rgba(0, 0, 0, 0.95); color: #fff; border-radius: 0 0 24px 24px; z-index: 120; box-shadow: 0 4px 32px rgba(0,255,255,0.20);}
+        .suggestion-item { padding: 8px 20px; cursor: pointer; transition: background 0.18s;}
+        .suggestion-item:hover { background: rgba(0,255,255,0.09); color: cyan;}
 
         .city-card { 
             position: absolute; padding: 24px 32px; border-radius: 28px; 
@@ -28,18 +34,17 @@
             background: conic-gradient(from 0deg at 50% 50%, #00ffff, #ff00ff, #ffff00, #00ff00, #00ffff);
             z-index: -1; animation: pulseBorder 6s linear infinite; opacity: 0.8;
         }
-        .city-card:hover { transform: translateY(-20px) scale(1.25); box-shadow: 0 0 100px rgba(0,255,255,1); }
+        .city-card:hover { transform: translateY(-20px) scale(1.1); box-shadow: 0 0 100px rgba(0,255,255,1); }
 
         .city-name { font-size: 1.5em; font-weight: bold; text-shadow: 0 0 15px cyan; margin-bottom: 8px; }
         .time { font-size: 3.5em; font-weight: 900; letter-spacing: -3px; text-shadow: 0 0 30px; margin: 8px 0; }
         .weather { font-size: 1.8em; font-weight: bold; margin: 10px 0; }
         .temp { font-size: 2.2em; margin: 5px 0; }
         .desc { font-size: 1.1em; opacity: 0.9; }
+        .icon { width: 60px; margin: 0 auto; }
 
         @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
         @keyframes pulseBorder { to { transform: rotate(360deg); } }
-        @keyframes rain { 0% { transform: translateY(-10px); opacity: 0; } 100% { transform: translateY(100px); opacity: 1; } }
-        @keyframes snow { 0% { transform: translateY(-10px) rotate(0deg); } 100% { transform: translateY(100px) rotate(360deg); opacity: 0; } }
     </style>
 </head>
 <body>
@@ -48,165 +53,210 @@
         <div id="search-bar">
             <input id="search-input" type="text" placeholder="Add city → Tokyo, Paris, Miami..." autocomplete="off">
         </div>
+        <div id="suggestions" style="display:none"></div>
     </div>
-
     <script>
-        // Three.js setup (zelfde als vorige versie)
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(devicePixelRatio);
-        document.getElementById('globe-container').appendChild(renderer.domElement);
+    // =============== THREE.JS GLOBE SETUP ===============
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(76, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.getElementById('globe-container').appendChild(renderer.domElement);
 
-        const starsGeometry = new THREE.BufferGeometry();
-        const vertices = [];
-        for (let i = 0; i < 20000; i++) {
-            vertices.push((Math.random()-0.5)*3000, (Math.random()-0.5)*3000, (Math.random()-0.5)*1500);
+    // Stars
+    const starsGeometry = new THREE.BufferGeometry();
+    const vertices = [];
+    for (let i = 0; i < 12000; i++) {
+        vertices.push((Math.random() - 0.5) * 3500, (Math.random() - 0.5) * 3500, (Math.random() - 0.5) * 1800);
+    }
+    starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    scene.add(new THREE.Points(starsGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 })));
+
+    // Earth with free neutral map background (CC0)
+    const globeTexture = new THREE.TextureLoader().load(
+        'https://upload.wikimedia.org/wikipedia/commons/9/97/The_Blue_Marble%2C_Eastern_Hemisphere.jpg'
+    );
+    const earth = new THREE.Mesh(
+        new THREE.SphereGeometry(5, 64, 64),
+        new THREE.MeshPhongMaterial({ color: 0x003366, map: globeTexture, emissive: 0x112255 })
+    );
+    scene.add(earth);
+
+    const atmosphere = new THREE.Mesh(
+        new THREE.SphereGeometry(5.16, 64, 64),
+        new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.16, side: THREE.BackSide })
+    );
+    scene.add(atmosphere);
+
+    scene.add(new THREE.AmbientLight(0x4040ff, 1.1));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    dirLight.position.set(50, 30, 40);
+    scene.add(dirLight);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.16;
+    controls.autoRotate = true; controls.autoRotateSpeed = 0.36;
+    controls.enablePan = false; controls.minDistance = 13; controls.maxDistance = 30;
+    camera.position.set(0, 0, 18);
+
+    // =============== CITY/TIMEZONE & DEMO WEATHER ===============
+    // Static "fake/dummy" weather data. No external API calls.
+    const cityData = {
+        'Amsterdam': { lat: 52.3676, lon: 4.9041, tz: 'Europe/Amsterdam', temp: 12, weather: 'clouds', desc: 'Partly cloudy', icon: '03d' },
+        'London':    { lat: 51.5074, lon: -0.1278, tz: 'Europe/London', temp: 10, weather: 'rain', desc: 'Rain showers', icon: '09d' },
+        'Tokyo':     { lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo', temp: 20, weather: 'clear', desc: 'Sunny', icon: '01d' },
+        'New York':  { lat: 40.7128, lon: -74.0060, tz: 'America/New_York', temp: 7, weather: 'snow', desc: 'Light snow', icon: '13d' },
+        'Dubai':     { lat: 25.2048, lon: 55.2708, tz: 'Asia/Dubai', temp: 28, weather: 'clear', desc: 'Sunny', icon: '01d' },
+        'Los Angeles':{lat: 34.0522, lon: -118.2437, tz: 'America/Los_Angeles', temp: 22, weather: 'clear', desc: 'Sunny', icon: '01d' },
+        'Singapore': { lat: 1.3521, lon: 103.8198, tz: 'Asia/Singapore', temp: 31, weather: 'rain', desc: 'Heavy rain', icon: '10d' },
+        'Sydney':    { lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney', temp: 25, weather: 'clouds', desc: 'Partly cloudy', icon: '02d' },
+        'Paris':     { lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris', temp: 14, weather: 'clouds', desc: 'Cloudy', icon: '04d' },
+        'Miami':     { lat: 25.7617, lon: -80.1918, tz: 'America/New_York', temp: 27, weather: 'rain', desc: 'Thunderstorm', icon: '11d' },
+        'Berlin':    { lat: 52.5200, lon: 13.4050, tz: 'Europe/Berlin', temp: 9, weather: 'clouds', desc: 'Foggy', icon: '50d' }
+    };
+
+    // =============== WEATHER VISUALIZATION ===============
+    function getWeatherGradient(main, icon) {
+        const night = icon && icon.endsWith('n');
+        if (main.includes('rain') || main.includes('drizzle')) return 'linear-gradient(135deg, #232526, #414345)';
+        if (main.includes('snow')) return 'linear-gradient(135deg, #e6e9f0, #eef2f3)';
+        if (main.includes('cloud')) return 'linear-gradient(135deg, #757f9a, #d7dde8)';
+        if (main.includes('clear')) return night ?
+            'linear-gradient(135deg, #0f0c29, #302b63)' :
+            'linear-gradient(135deg, #ff6e7f, #bfe9ff)';
+        if (main.includes('thunder')) return 'linear-gradient(135deg, #141e30, #243b55)';
+        return 'linear-gradient(135deg, #1e3c72, #2a5298)';
+    }
+
+    // =============== CITY CARDS ===============
+    const activeCities = ['Amsterdam', 'Tokyo', 'New York'];
+    const cards = {};
+
+    function cityCardPosition(idx, total) {
+        const centerX = window.innerWidth / 2 - 130;
+        const centerY = window.innerHeight / 2 - 100;
+        const spacingX = 320, spacingY = 180;
+        let offsetX = ((idx % 3) - 1) * spacingX;
+        let offsetY = (Math.floor(idx/3) - Math.floor(total/6)) * spacingY;
+        return { left: `${centerX + offsetX}px`, top: `${centerY + offsetY}px` };
+    }
+
+    function updateCard(card, city) {
+        const data = cityData[city];
+        if (!data) return;
+        const tz = data.tz;
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+        const dateStr = now.toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' });
+        const gradient = getWeatherGradient(data.weather, data.icon);
+        let iconImg = data.icon
+            ? `<img class="icon" src="https://openweathermap.org/img/wn/${data.icon}@2x.png" alt="" />`
+            : '';
+        card.innerHTML = `
+            <div class="city-name">${city}</div>
+            <div class="time">${timeStr}</div>
+            <div class="temp">${data.temp}°C</div>
+            <div class="weather">${iconImg}${data.desc}</div>
+            <div class="desc">${dateStr}</div>
+        `;
+        card.style.background = `${gradient}, rgba(255,255,255,0.06)`;
+    }
+
+    function addCityWithExplosion(city) {
+        if (!cityData[city] || activeCities.includes(city)) return;
+        activeCities.push(city);
+        const card = document.createElement('div');
+        card.className = 'city-card';
+        card.style.left = cityCardPosition(activeCities.length-1, activeCities.length).left;
+        card.style.top = cityCardPosition(activeCities.length-1, activeCities.length).top;
+        card.style.opacity = '0'; card.style.transform = 'scale(0)';
+        document.getElementById('ui-overlay').appendChild(card);
+        cards[city] = card;
+
+        setTimeout(() => {
+            card.style.transition = 'all 1s cubic-bezier(0.175, 0.885, 0.32, 1.475)';
+            card.style.opacity = '1'; card.style.transform = 'scale(1)';
+            updateCard(card, city);
+        }, 180);
+    }
+
+    // =============== INITIAL CARDS LOAD ===============
+    activeCities.forEach((city, i) => {
+        setTimeout(() => {
+            if (!cards[city]) addCityWithExplosion(city);
+        }, i * 650)
+    });
+
+    // =============== SEARCH BAR SUGGESTIONS ===============
+    const searchInput = document.getElementById('search-input');
+    const suggestionsDiv = document.getElementById('suggestions');
+
+    function updateSuggestions(val) {
+        if (!val || val.length < 2) {
+            suggestionsDiv.innerHTML = '';
+            suggestionsDiv.style.display = 'none';
+            return;
         }
-        starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        scene.add(new THREE.Points(starsGeometry, new THREE.PointsMaterial({color: 0xffffff, size: 0.8})));
-
-        const earth = new THREE.Mesh(
-            new THREE.SphereGeometry(5, 64, 64),
-            new THREE.MeshPhongMaterial({color: 0x003366, emissive: 0x112255})
+        const matches = Object.keys(cityData).filter(
+            c => c.toLowerCase().includes(val.toLowerCase()) && !activeCities.includes(c)
         );
-        scene.add(earth);
-        const atmosphere = new THREE.Mesh(
-            new THREE.SphereGeometry(5.5, 64, 64),
-            new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.2, side: THREE.BackSide})
-        );
-        scene.add(atmosphere);
-
-        scene.add(new THREE.AmbientLight(0x4040ff, 0.7));
-        scene.add(new THREE.DirectionalLight(0xffffff, 2)).position.set(50,30,40);
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
-        camera.position.z = 18;
-
-        // City coordinates + timezone
-        const cityData = {
-            'Amsterdam': { lat: 52.3676, lon: 4.9041, tz: 'Europe/Amsterdam' },
-            'London': { lat: 51.5074, lon: -0.1278, tz: 'Europe/London' },
-            'Tokyo': { lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo' },
-            'New York': { lat: 40.7128, lon: -74.0060, tz: 'America/New_York' },
-            'Dubai': { lat: 25.2048, lon: 55.2708, tz: 'Asia/Dubai' },
-            'Los Angeles': { lat: 34.0522, lon: -118.2437, tz: 'America/Los_Angeles' },
-            'Singapore': { lat: 1.3521, lon: 103.8198, tz: 'Asia/Singapore' },
-            'Sydney': { lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney' },
-            'Paris': { lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris' },
-            'Miami': { lat: 25.7617, lon: -80.1918, tz: 'America/New_York' },
-            'Berlin': { lat: 52.5200, lon: 13.4050, tz: 'Europe/Berlin' },
-        };
-
-        const activeCities = ['Amsterdam', 'Tokyo', 'New York'];
-        const cards = {};
-
-        // ==== LIVE WEATHER ====
-        async function fetchWeather(city) {
-            try {
-                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://api.openweathermap.org/data/2.5/weather?q=' + city + '&appid=1a2b3c4d5e6f7g8h9i0j&units=metric')}`);
-                const data = await res.json();
-                const weather = JSON.parse(data.contents);
-                return {
-                    temp: Math.round(weather.main.temp),
-                    desc: weather.weather[0].description.charAt(0).toUpperCase() + weather.weather[0].description.slice(1),
-                    icon: weather.weather[0].icon,
-                    main: weather.weather[0].main.toLowerCase()
-                };
-            } catch(e) { return { temp: '--', desc: 'No data', icon: '01d', main: 'clear' }; }
+        if (matches.length === 0) {
+            suggestionsDiv.innerHTML = '<div class="suggestion-item" style="color:gray;">No matches</div>';
+            suggestionsDiv.style.display = 'block';
+            return;
         }
+        suggestionsDiv.innerHTML = matches.map(m => `<div class="suggestion-item">${m}</div>`).join('');
+        suggestionsDiv.style.display = 'block';
+        // Suggestion selection logic
+        suggestionsDiv.querySelectorAll('.suggestion-item').forEach(item => {
+            item.onclick = () => {
+                addCityWithExplosion(item.textContent);
+                searchInput.value = '';
+                updateSuggestions('');
+            };
+        });
+    }
 
-        function getWeatherGradient(main, icon) {
-            const night = icon.endsWith('n');
-            if (main.includes('rain') || main.includes('drizzle')) return 'linear-gradient(135deg, #232526, #414345)';
-            if (main.includes('snow')) return 'linear-gradient(135deg, #e6e9f0, #eef2f3)';
-            if (main.includes('cloud')) return 'linear-gradient(135deg, #757f9a, #d7dde8)';
-            if (main.includes('clear')) return night ? 'linear-gradient(135deg, #0f0c29, #302b63)' : 'linear-gradient(135deg, #ff6e7f, #bfe9ff)';
-            if (main.includes('thunder')) return 'linear-gradient(135deg, #141e30, #243b55)';
-            return 'linear-gradient(135deg, #1e3c72, #2a5298)';
-        }
+    searchInput.addEventListener('input', function() {
+        updateSuggestions(this.value.trim());
+    });
 
-        function addCityWithExplosion(city) {
-            if (activeCities.includes(city)) return;
-            activeCities.push(city);
+    // Hide suggestions on click elsewhere
+    document.body.addEventListener('click', e => {
+        if (e.target !== searchInput) updateSuggestions('');
+    }, true);
 
-            const card = document.createElement('div');
-            card.className = 'city-card';
-            card.style.left = (innerWidth/2 - 130) + 'px';
-            card.style.top = (innerHeight/2 - 100) + 'px';
-            card.style.opacity = '0'; card.style.transform = 'scale(0)';
-            document.getElementById('ui-overlay').appendChild(card);
-            cards[city] = card;
-
-            // entrance + weather load
-            setTimeout(async () => {
-                card.style.transition = 'all 1s cubic-bezier(0.175, 0.885, 0.32, 1.475)';
-                card.style.opacity = '1'; card.style.transform = 'scale(1)';
-                const weather = await fetchWeather(city);
-                updateCard(card, city, weather);
-                // refresh weather elke 10 min
-                setInterval(async () => updateCard(card, city, await fetchWeather(city)), 600000);
-            }, 200);
-        }
-
-        function updateCard(card, city, weather) {
-            const tz = cityData[city].tz;
-            const timeStr = new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
-            const dateStr = new Date().toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' });
-            const gradient = getWeatherGradient(weather.main, weather.icon);
-
-            card.innerHTML = `
-                <div class="city-name">${city}</div>
-                <div class="time">${timeStr}</div>
-                <div class="temp">${weather.temp}°C</div>
-                <div class="weather">${weather.desc}</div>
-                <div class="desc">${dateStr}</div>
-            `;
-            card.style.background = `${gradient}, rgba(255,255,255,0.06)`;
-
-            // Weer-effecten (regen/sneeuw)
-            card.querySelectorAll('.raindrop, .snowflake').forEach(el => el.remove());
-            if (weather.main.includes('rain')) {
-                for (let i = 0; i < 20; i++) {
-                    const drop = document.createElement('div');
-                    drop.style.position = 'absolute'; drop.style.width = '2px'; drop.style.height = '20px';
-                    drop.style.background = 'rgba(255,255,255,0.6)'; drop.style.left = Math.random()*100 + '%';
-                    drop.style.top = '-20px'; drop.style.animation = 'rain 1s linear infinite';
-                    drop.style.animationDelay = Math.random()*1 + 's';
-                    card.appendChild(drop);
-                }
+    // Enter key adds first suggestion
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const val = this.value.trim();
+            const matches = Object.keys(cityData).filter(
+                c => c.toLowerCase().includes(val.toLowerCase()) && !activeCities.includes(c)
+            );
+            if (matches.length) {
+                addCityWithExplosion(matches[0]);
+                this.value = '';
+                updateSuggestions('');
             }
         }
+    });
 
-        // Init steden
-        activeCities.forEach((c, i) => setTimeout(() => addCityWithExplosion(c), i*1000));
+    // =============== ANIMATION LOOP ===============
+    function animate() {
+        requestAnimationFrame(animate);
+        earth.rotation.y += 0.0014;
+        atmosphere.rotation.y += 0.001;
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
 
-        // Search
-        document.getElementById('search-input').addEventListener('input', function() {
-            const val = this.value.toLowerCase().trim();
-            if (val.length < 2) return document.getElementById('suggestions') && document.getElementById('suggestions').remove();
-            const matches = Object.keys(cityData).filter(c => c.toLowerCase().includes(val) && !activeCities.includes(c));
-            if (matches.length === 0) return;
-            let sug =Create a suggestion dropdown (simplified)
-            if (matches.length > 0) addCityWithExplosion(matches[0]), this.value = '';
-        });
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            earth.rotation.y += 0.0015;
-            atmosphere.rotation.y += 0.001;
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = innerWidth/innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(innerWidth, innerHeight);
-        });
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
     </script>
 </body>
 </html>
