@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Interactive World Clock — Minimal Modern 2025</title>
+  <title>World Clock — Minimal Single File</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
       --bg: #0b0f14; --fg: #e9eef5; --muted:#9fb3c8;
       --card: rgba(255,255,255,0.06); --border: rgba(255,255,255,0.08);
       --accent: #4fd1c5; --danger:#ef4444; --shadow: 0 8px 24px rgba(0,0,0,0.35);
-      --morning: #ffd57a; --afternoon:#9ad1ff; --evening:#c7a4ff; --night:#7aa1ff;
     }
     [data-theme="light"]{
       --bg: #f6f8fb; --fg: #101318; --muted:#4a5664;
@@ -18,14 +17,12 @@
     }
     *{box-sizing:border-box}
     body{
-      margin:0; background:var(--bg); color:var(--fg); font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      margin:0; background:var(--bg); color:var(--fg);
+      font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
     }
-    /* Top bar */
     #topbar{
-      position: sticky; top:0; z-index:10;
-      display:flex; gap:10px; padding:12px 16px;
-      backdrop-filter: blur(10px); background: rgba(0,0,0,0.18);
-      border-bottom: 1px solid var(--border);
+      position: sticky; top:0; z-index:10; display:flex; gap:10px; padding:12px 16px;
+      backdrop-filter: blur(10px); background: rgba(0,0,0,0.18); border-bottom: 1px solid var(--border);
     }
     #topbar input, #topbar select, #topbar button{
       height:36px; border:none; border-radius:10px; padding:0 12px; outline:none;
@@ -37,16 +34,14 @@
     #topbar button:hover{ transform: translateY(-1px); box-shadow: var(--shadow); }
     #topbar .primary{ background: var(--accent); color:#062b2b; font-weight:600; }
 
-    /* Container */
     #wrap{ max-width: 960px; margin: 20px auto; padding: 0 16px; }
     #hint{ color:var(--muted); margin: 8px 0 16px; }
-
-    /* Cards */
     #cityList{ display:flex; flex-direction:column; gap:14px; }
+
     .card{
       display:flex; align-items:center; justify-content:space-between;
       background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-      padding: 14px 14px; box-shadow: var(--shadow);
+      padding: 14px; box-shadow: var(--shadow);
       transition: background .2s ease, transform .12s ease, box-shadow .2s ease;
     }
     .card:hover{ transform: translateY(-1px); }
@@ -55,15 +50,6 @@
     .sub{ color:var(--muted); font-size: 12px; }
     .time{ font-size: 22px; font-variant-numeric: tabular-nums; }
     .phase{ display:flex; align-items:center; gap:8px; color:var(--muted); font-size: 13px; }
-
-    .handle{
-      font-size: 22px; opacity:.6; cursor:grab; margin-right: 10px; user-select:none;
-    }
-    .actions{ display:flex; gap:8px; align-items:center; }
-    .btn{ height:32px; padding:0 10px; border:none; border-radius:8px; cursor:pointer;
-      background: var(--card); color:var(--fg); box-shadow: inset 0 0 0 1px var(--border);
-    }
-    .btn.danger{ background: var(--danger); color: #fff; }
     .tag{
       display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:8px;
       background: rgba(255,255,255,0.08); border: 1px solid var(--border);
@@ -74,11 +60,15 @@
     .tag.evening{ border-color: rgba(199,164,255,0.45); color:#3b2c61; background: rgba(199,164,255,0.18) }
     .tag.night{ border-color: rgba(122,161,255,0.45); color:#1e2f67; background: rgba(122,161,255,0.18) }
 
-    /* Footer */
-    footer{ color:var(--muted); text-align:center; padding: 24px 0 40px; }
-    a.inline{ color:var(--accent); text-decoration:none; }
+    .handle{ font-size: 22px; opacity:.6; cursor:grab; margin-right: 10px; user-select:none; }
+    .actions{ display:flex; gap:8px; align-items:center; }
+    .btn{ height:32px; padding:0 10px; border:none; border-radius:8px; cursor:pointer;
+      background: var(--card); color:var(--fg); box-shadow: inset 0 0 0 1px var(--border);
+    }
+    .btn.danger{ background: var(--danger); color:#fff; }
 
-    /* Responsive */
+    footer{ color:var(--muted); text-align:center; padding: 24px 0 40px; }
+
     @media (max-width:640px){
       .time{ font-size: 20px; }
       .name{ font-size: 16px; }
@@ -97,36 +87,29 @@
   </div>
 
   <div id="wrap">
-    <div id="hint">Keep it simple: add your cities, pick timezones, drag to reorder. Everything saves locally.</div>
+    <div id="hint">Add cities, pick timezones, drag to reorder. Everything saves locally.</div>
     <div id="cityList"></div>
   </div>
 
-  <footer>Interactive World Clock — minimal, modern, and smooth.</footer>
+  <footer>World Clock — single-file HTML, no images required.</footer>
 
   <script>
-    // --- State ---
     const ls = (k, v) => v === undefined ? JSON.parse(localStorage.getItem(k) || "null") : localStorage.setItem(k, JSON.stringify(v));
     let cities = ls("wc_cities") || [];
     let is24 = ls("wc_is24"); if (is24 === null) is24 = true;
     let theme = ls("wc_theme") || "dark";
     document.body.setAttribute("data-theme", theme);
 
-    // --- Timezones ---
     const tzSelect = document.getElementById("tzSelect");
     const supported = (Intl.supportedValuesOf && Intl.supportedValuesOf("timeZone")) || [
-      "UTC","Europe/Amsterdam","Europe/Paris","Europe/London","Europe/Berlin","America/New_York","America/Los_Angeles","Asia/Tokyo","Asia/Kolkata","Australia/Sydney"
+      "UTC","Europe/Amsterdam","Europe/Paris","Europe/London","Europe/Berlin",
+      "America/New_York","America/Los_Angeles","Asia/Tokyo","Asia/Kolkata","Australia/Sydney"
     ];
     supported.forEach(z => {
       const o = document.createElement("option"); o.value = z; o.textContent = z; tzSelect.appendChild(o);
     });
 
-    // --- Helpers ---
-    const phaseIcon = {
-      morning: "🌅",
-      afternoon: "🌞",
-      evening: "🌇",
-      night: "🌙"
-    };
+    const phaseIcon = { morning:"🌅", afternoon:"🌞", evening:"🌇", night:"🌙" };
     function getPhase(h){
       if (h>=5 && h<12) return "morning";
       if (h>=12 && h<17) return "afternoon";
@@ -134,63 +117,49 @@
       return "night";
     }
     function fmtTime(d){
-      return is24 ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute:"2-digit", second:"2-digit" })
-                  : d.toLocaleTimeString("en-US", { hour: "numeric", minute:"2-digit", second:"2-digit" });
+      return is24 ? d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", second:"2-digit" })
+                  : d.toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", second:"2-digit" });
     }
 
-    // --- Render ---
     const listEl = document.getElementById("cityList");
     function render(){
       ls("wc_cities", cities); ls("wc_is24", is24); ls("wc_theme", theme);
       listEl.innerHTML = "";
       cities.forEach((c, i) => {
-        const nowStr = new Date().toLocaleString("en-US", { timeZone: c.tz });
-        const d = new Date(nowStr);
-        const h = d.getHours();
-        const ph = getPhase(h);
+        const d = new Date(new Date().toLocaleString("en-US", { timeZone: c.tz }));
+        const ph = getPhase(d.getHours());
 
-        const card = document.createElement("div");
-        card.className = "card"; card.draggable = true;
-
+        const card = document.createElement("div"); card.className = "card"; card.draggable = true;
         const left = document.createElement("div"); left.className = "left";
         const nm = document.createElement("div"); nm.className = "name"; nm.textContent = c.name;
         const sub = document.createElement("div"); sub.className = "sub"; sub.textContent = c.tz;
-
         const time = document.createElement("div"); time.className = "time"; time.textContent = fmtTime(d);
-        const tag = document.createElement("div"); tag.className = "tag " + ph; tag.innerHTML = `<span>${phaseIcon[ph]}</span><span>${ph}</span>`;
-
         left.appendChild(nm); left.appendChild(sub); left.appendChild(time);
+
+        const tag = document.createElement("div"); tag.className = "tag " + ph;
+        tag.innerHTML = `<span>${phaseIcon[ph]}</span><span>${ph}</span>`;
         const phase = document.createElement("div"); phase.className = "phase"; phase.appendChild(tag);
 
         const actions = document.createElement("div"); actions.className = "actions";
         const rm = document.createElement("button"); rm.className = "btn danger"; rm.textContent = "Remove";
         rm.onclick = () => { cities.splice(i,1); render(); };
-
         actions.appendChild(phase); actions.appendChild(rm);
 
         const handle = document.createElement("span"); handle.className = "handle"; handle.textContent = "≡";
+        card.appendChild(handle); card.appendChild(left); card.appendChild(actions);
 
-        card.appendChild(handle);
-        card.appendChild(left);
-        card.appendChild(actions);
-
-        // Drag & Drop reorder
         card.addEventListener("dragstart", e => { e.dataTransfer.setData("index", i); });
         card.addEventListener("dragover", e => e.preventDefault());
         card.addEventListener("drop", e => {
           const from = +e.dataTransfer.getData("index");
-          const to = i;
-          if (from === to) return;
-          const [m] = cities.splice(from,1);
-          cities.splice(to,0,m);
-          render();
+          const to = i; if (from === to) return;
+          const [m] = cities.splice(from,1); cities.splice(to,0,m); render();
         });
 
         listEl.appendChild(card);
       });
     }
 
-    // --- Controls ---
     document.getElementById("addBtn").onclick = () => {
       const name = document.getElementById("cityInput").value.trim();
       const tz = tzSelect.value;
@@ -206,7 +175,6 @@
       render();
     };
 
-    // --- Live time update ---
     render();
     setInterval(render, 1000);
   </script>
