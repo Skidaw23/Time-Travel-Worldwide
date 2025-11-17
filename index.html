@@ -1,182 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>World Clock — Minimal Single File</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{
-      --bg: #0b0f14; --fg: #e9eef5; --muted:#9fb3c8;
-      --card: rgba(255,255,255,0.06); --border: rgba(255,255,255,0.08);
-      --accent: #4fd1c5; --danger:#ef4444; --shadow: 0 8px 24px rgba(0,0,0,0.35);
-    }
-    [data-theme="light"]{
-      --bg: #f6f8fb; --fg: #101318; --muted:#4a5664;
-      --card: rgba(16,19,24,0.06); --border: rgba(16,19,24,0.08);
-      --accent: #0ea5e9; --danger:#dc2626; --shadow: 0 8px 24px rgba(16,19,24,0.15);
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; background:var(--bg); color:var(--fg);
-      font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
-    }
-    #topbar{
-      position: sticky; top:0; z-index:10; display:flex; gap:10px; padding:12px 16px;
-      backdrop-filter: blur(10px); background: rgba(0,0,0,0.18); border-bottom: 1px solid var(--border);
-    }
-    #topbar input, #topbar select, #topbar button{
-      height:36px; border:none; border-radius:10px; padding:0 12px; outline:none;
-      background: var(--card); color: var(--fg); box-shadow: inset 0 0 0 1px var(--border);
-      transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
-    }
-    #topbar input::placeholder{ color:var(--muted) }
-    #topbar button{ cursor:pointer; }
-    #topbar button:hover{ transform: translateY(-1px); box-shadow: var(--shadow); }
-    #topbar .primary{ background: var(--accent); color:#062b2b; font-weight:600; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Nebula Globe Clock – Live Weather Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: #fff; }
+        canvas { display: block; }
+        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #search-bar { pointer-events: auto; position: absolute; top: 30px; left: 50%; transform: translateX(-50%); width: 340px; z-index: 100; }
+        #search-input { width: 100%; padding: 16px 24px; border: none; border-radius: 30px; 
+            background: rgba(255,255,255,0.1); color: #fff; backdrop-filter: blur(15px); 
+            box-shadow: 0 8px 32px rgba(0,255,255,0.3); transition: all 0.4s; font-size: 1.2em; }
+        #search-input:focus { outline: none; box-shadow: 0 0 40px rgba(0,255,255,0.8); transform: scale(1.05); }
 
-    #wrap{ max-width: 960px; margin: 20px auto; padding: 0 16px; }
-    #hint{ color:var(--muted); margin: 8px 0 16px; }
-    #cityList{ display:flex; flex-direction:column; gap:14px; }
+        .city-card { 
+            position: absolute; padding: 24px 32px; border-radius: 28px; 
+            background: rgba(255,255,255,0.06); backdrop-filter: blur(22px); 
+            box-shadow: 0 0 50px rgba(0,255,255,0.5); pointer-events: auto; 
+            animation: float 8s ease-in-out infinite; border: 1px solid rgba(0,255,255,0.4);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.475); width: 260px; text-align: center;
+        }
+        .city-card::before {
+            content: ''; position: absolute; inset: -4px; border-radius: 32px;
+            background: conic-gradient(from 0deg at 50% 50%, #00ffff, #ff00ff, #ffff00, #00ff00, #00ffff);
+            z-index: -1; animation: pulseBorder 6s linear infinite; opacity: 0.8;
+        }
+        .city-card:hover { transform: translateY(-20px) scale(1.25); box-shadow: 0 0 100px rgba(0,255,255,1); }
 
-    .card{
-      display:flex; align-items:center; justify-content:space-between;
-      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-      padding: 14px; box-shadow: var(--shadow);
-      transition: background .2s ease, transform .12s ease, box-shadow .2s ease;
-    }
-    .card:hover{ transform: translateY(-1px); }
-    .left{ display:flex; flex-direction:column; gap:4px; }
-    .name{ font-weight:650; font-size: 18px; letter-spacing:.2px; }
-    .sub{ color:var(--muted); font-size: 12px; }
-    .time{ font-size: 22px; font-variant-numeric: tabular-nums; }
-    .phase{ display:flex; align-items:center; gap:8px; color:var(--muted); font-size: 13px; }
-    .tag{
-      display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:8px;
-      background: rgba(255,255,255,0.08); border: 1px solid var(--border);
-      font-size:12px; color:var(--muted);
-    }
-    .tag.morning{ border-color: rgba(255,213,122,0.45); color:#5f4b22; background: rgba(255,213,122,0.18) }
-    .tag.afternoon{ border-color: rgba(154,209,255,0.45); color:#1a3a56; background: rgba(154,209,255,0.18) }
-    .tag.evening{ border-color: rgba(199,164,255,0.45); color:#3b2c61; background: rgba(199,164,255,0.18) }
-    .tag.night{ border-color: rgba(122,161,255,0.45); color:#1e2f67; background: rgba(122,161,255,0.18) }
+        .city-name { font-size: 1.5em; font-weight: bold; text-shadow: 0 0 15px cyan; margin-bottom: 8px; }
+        .time { font-size: 3.5em; font-weight: 900; letter-spacing: -3px; text-shadow: 0 0 30px; margin: 8px 0; }
+        .weather { font-size: 1.8em; font-weight: bold; margin: 10px 0; }
+        .temp { font-size: 2.2em; margin: 5px 0; }
+        .desc { font-size: 1.1em; opacity: 0.9; }
 
-    .handle{ font-size: 22px; opacity:.6; cursor:grab; margin-right: 10px; user-select:none; }
-    .actions{ display:flex; gap:8px; align-items:center; }
-    .btn{ height:32px; padding:0 10px; border:none; border-radius:8px; cursor:pointer;
-      background: var(--card); color:var(--fg); box-shadow: inset 0 0 0 1px var(--border);
-    }
-    .btn.danger{ background: var(--danger); color:#fff; }
-
-    footer{ color:var(--muted); text-align:center; padding: 24px 0 40px; }
-
-    @media (max-width:640px){
-      .time{ font-size: 20px; }
-      .name{ font-size: 16px; }
-      #topbar{ flex-wrap: wrap; }
-    }
-  </style>
+        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
+        @keyframes pulseBorder { to { transform: rotate(360deg); } }
+        @keyframes rain { 0% { transform: translateY(-10px); opacity: 0; } 100% { transform: translateY(100px); opacity: 1; } }
+        @keyframes snow { 0% { transform: translateY(-10px) rotate(0deg); } 100% { transform: translateY(100px) rotate(360deg); opacity: 0; } }
+    </style>
 </head>
-<body data-theme="dark">
-  <div id="topbar">
-    <span class="handle" title="Drag cards to reorder">≡</span>
-    <input id="cityInput" placeholder="City name (e.g., Amsterdam)" />
-    <select id="tzSelect" aria-label="Timezone"></select>
-    <button id="addBtn" class="primary">Add city</button>
-    <button id="fmtBtn">12 / 24h</button>
-    <button id="themeBtn">Theme</button>
-  </div>
+<body>
+    <div id="globe-container"></div>
+    <div id="ui-overlay">
+        <div id="search-bar">
+            <input id="search-input" type="text" placeholder="Add city → Tokyo, Paris, Miami..." autocomplete="off">
+        </div>
+    </div>
 
-  <div id="wrap">
-    <div id="hint">Add cities, pick timezones, drag to reorder. Everything saves locally.</div>
-    <div id="cityList"></div>
-  </div>
+    <script>
+        // Three.js setup (zelfde als vorige versie)
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(devicePixelRatio);
+        document.getElementById('globe-container').appendChild(renderer.domElement);
 
-  <footer>World Clock — single-file HTML, no images required.</footer>
+        const starsGeometry = new THREE.BufferGeometry();
+        const vertices = [];
+        for (let i = 0; i < 20000; i++) {
+            vertices.push((Math.random()-0.5)*3000, (Math.random()-0.5)*3000, (Math.random()-0.5)*1500);
+        }
+        starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        scene.add(new THREE.Points(starsGeometry, new THREE.PointsMaterial({color: 0xffffff, size: 0.8})));
 
-  <script>
-    const ls = (k, v) => v === undefined ? JSON.parse(localStorage.getItem(k) || "null") : localStorage.setItem(k, JSON.stringify(v));
-    let cities = ls("wc_cities") || [];
-    let is24 = ls("wc_is24"); if (is24 === null) is24 = true;
-    let theme = ls("wc_theme") || "dark";
-    document.body.setAttribute("data-theme", theme);
+        const earth = new THREE.Mesh(
+            new THREE.SphereGeometry(5, 64, 64),
+            new THREE.MeshPhongMaterial({color: 0x003366, emissive: 0x112255})
+        );
+        scene.add(earth);
+        const atmosphere = new THREE.Mesh(
+            new THREE.SphereGeometry(5.5, 64, 64),
+            new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.2, side: THREE.BackSide})
+        );
+        scene.add(atmosphere);
 
-    const tzSelect = document.getElementById("tzSelect");
-    const supported = (Intl.supportedValuesOf && Intl.supportedValuesOf("timeZone")) || [
-      "UTC","Europe/Amsterdam","Europe/Paris","Europe/London","Europe/Berlin",
-      "America/New_York","America/Los_Angeles","Asia/Tokyo","Asia/Kolkata","Australia/Sydney"
-    ];
-    supported.forEach(z => {
-      const o = document.createElement("option"); o.value = z; o.textContent = z; tzSelect.appendChild(o);
-    });
+        scene.add(new THREE.AmbientLight(0x4040ff, 0.7));
+        scene.add(new THREE.DirectionalLight(0xffffff, 2)).position.set(50,30,40);
 
-    const phaseIcon = { morning:"🌅", afternoon:"🌞", evening:"🌇", night:"🌙" };
-    function getPhase(h){
-      if (h>=5 && h<12) return "morning";
-      if (h>=12 && h<17) return "afternoon";
-      if (h>=17 && h<21) return "evening";
-      return "night";
-    }
-    function fmtTime(d){
-      return is24 ? d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", second:"2-digit" })
-                  : d.toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", second:"2-digit" });
-    }
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
+        camera.position.z = 18;
 
-    const listEl = document.getElementById("cityList");
-    function render(){
-      ls("wc_cities", cities); ls("wc_is24", is24); ls("wc_theme", theme);
-      listEl.innerHTML = "";
-      cities.forEach((c, i) => {
-        const d = new Date(new Date().toLocaleString("en-US", { timeZone: c.tz }));
-        const ph = getPhase(d.getHours());
+        // City coordinates + timezone
+        const cityData = {
+            'Amsterdam': { lat: 52.3676, lon: 4.9041, tz: 'Europe/Amsterdam' },
+            'London': { lat: 51.5074, lon: -0.1278, tz: 'Europe/London' },
+            'Tokyo': { lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo' },
+            'New York': { lat: 40.7128, lon: -74.0060, tz: 'America/New_York' },
+            'Dubai': { lat: 25.2048, lon: 55.2708, tz: 'Asia/Dubai' },
+            'Los Angeles': { lat: 34.0522, lon: -118.2437, tz: 'America/Los_Angeles' },
+            'Singapore': { lat: 1.3521, lon: 103.8198, tz: 'Asia/Singapore' },
+            'Sydney': { lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney' },
+            'Paris': { lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris' },
+            'Miami': { lat: 25.7617, lon: -80.1918, tz: 'America/New_York' },
+            'Berlin': { lat: 52.5200, lon: 13.4050, tz: 'Europe/Berlin' },
+        };
 
-        const card = document.createElement("div"); card.className = "card"; card.draggable = true;
-        const left = document.createElement("div"); left.className = "left";
-        const nm = document.createElement("div"); nm.className = "name"; nm.textContent = c.name;
-        const sub = document.createElement("div"); sub.className = "sub"; sub.textContent = c.tz;
-        const time = document.createElement("div"); time.className = "time"; time.textContent = fmtTime(d);
-        left.appendChild(nm); left.appendChild(sub); left.appendChild(time);
+        const activeCities = ['Amsterdam', 'Tokyo', 'New York'];
+        const cards = {};
 
-        const tag = document.createElement("div"); tag.className = "tag " + ph;
-        tag.innerHTML = `<span>${phaseIcon[ph]}</span><span>${ph}</span>`;
-        const phase = document.createElement("div"); phase.className = "phase"; phase.appendChild(tag);
+        // ==== LIVE WEATHER ====
+        async function fetchWeather(city) {
+            try {
+                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://api.openweathermap.org/data/2.5/weather?q=' + city + '&appid=1a2b3c4d5e6f7g8h9i0j&units=metric')}`);
+                const data = await res.json();
+                const weather = JSON.parse(data.contents);
+                return {
+                    temp: Math.round(weather.main.temp),
+                    desc: weather.weather[0].description.charAt(0).toUpperCase() + weather.weather[0].description.slice(1),
+                    icon: weather.weather[0].icon,
+                    main: weather.weather[0].main.toLowerCase()
+                };
+            } catch(e) { return { temp: '--', desc: 'No data', icon: '01d', main: 'clear' }; }
+        }
 
-        const actions = document.createElement("div"); actions.className = "actions";
-        const rm = document.createElement("button"); rm.className = "btn danger"; rm.textContent = "Remove";
-        rm.onclick = () => { cities.splice(i,1); render(); };
-        actions.appendChild(phase); actions.appendChild(rm);
+        function getWeatherGradient(main, icon) {
+            const night = icon.endsWith('n');
+            if (main.includes('rain') || main.includes('drizzle')) return 'linear-gradient(135deg, #232526, #414345)';
+            if (main.includes('snow')) return 'linear-gradient(135deg, #e6e9f0, #eef2f3)';
+            if (main.includes('cloud')) return 'linear-gradient(135deg, #757f9a, #d7dde8)';
+            if (main.includes('clear')) return night ? 'linear-gradient(135deg, #0f0c29, #302b63)' : 'linear-gradient(135deg, #ff6e7f, #bfe9ff)';
+            if (main.includes('thunder')) return 'linear-gradient(135deg, #141e30, #243b55)';
+            return 'linear-gradient(135deg, #1e3c72, #2a5298)';
+        }
 
-        const handle = document.createElement("span"); handle.className = "handle"; handle.textContent = "≡";
-        card.appendChild(handle); card.appendChild(left); card.appendChild(actions);
+        function addCityWithExplosion(city) {
+            if (activeCities.includes(city)) return;
+            activeCities.push(city);
 
-        card.addEventListener("dragstart", e => { e.dataTransfer.setData("index", i); });
-        card.addEventListener("dragover", e => e.preventDefault());
-        card.addEventListener("drop", e => {
-          const from = +e.dataTransfer.getData("index");
-          const to = i; if (from === to) return;
-          const [m] = cities.splice(from,1); cities.splice(to,0,m); render();
+            const card = document.createElement('div');
+            card.className = 'city-card';
+            card.style.left = (innerWidth/2 - 130) + 'px';
+            card.style.top = (innerHeight/2 - 100) + 'px';
+            card.style.opacity = '0'; card.style.transform = 'scale(0)';
+            document.getElementById('ui-overlay').appendChild(card);
+            cards[city] = card;
+
+            // entrance + weather load
+            setTimeout(async () => {
+                card.style.transition = 'all 1s cubic-bezier(0.175, 0.885, 0.32, 1.475)';
+                card.style.opacity = '1'; card.style.transform = 'scale(1)';
+                const weather = await fetchWeather(city);
+                updateCard(card, city, weather);
+                // refresh weather elke 10 min
+                setInterval(async () => updateCard(card, city, await fetchWeather(city)), 600000);
+            }, 200);
+        }
+
+        function updateCard(card, city, weather) {
+            const tz = cityData[city].tz;
+            const timeStr = new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+            const dateStr = new Date().toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' });
+            const gradient = getWeatherGradient(weather.main, weather.icon);
+
+            card.innerHTML = `
+                <div class="city-name">${city}</div>
+                <div class="time">${timeStr}</div>
+                <div class="temp">${weather.temp}°C</div>
+                <div class="weather">${weather.desc}</div>
+                <div class="desc">${dateStr}</div>
+            `;
+            card.style.background = `${gradient}, rgba(255,255,255,0.06)`;
+
+            // Weer-effecten (regen/sneeuw)
+            card.querySelectorAll('.raindrop, .snowflake').forEach(el => el.remove());
+            if (weather.main.includes('rain')) {
+                for (let i = 0; i < 20; i++) {
+                    const drop = document.createElement('div');
+                    drop.style.position = 'absolute'; drop.style.width = '2px'; drop.style.height = '20px';
+                    drop.style.background = 'rgba(255,255,255,0.6)'; drop.style.left = Math.random()*100 + '%';
+                    drop.style.top = '-20px'; drop.style.animation = 'rain 1s linear infinite';
+                    drop.style.animationDelay = Math.random()*1 + 's';
+                    card.appendChild(drop);
+                }
+            }
+        }
+
+        // Init steden
+        activeCities.forEach((c, i) => setTimeout(() => addCityWithExplosion(c), i*1000));
+
+        // Search
+        document.getElementById('search-input').addEventListener('input', function() {
+            const val = this.value.toLowerCase().trim();
+            if (val.length < 2) return document.getElementById('suggestions') && document.getElementById('suggestions').remove();
+            const matches = Object.keys(cityData).filter(c => c.toLowerCase().includes(val) && !activeCities.includes(c));
+            if (matches.length === 0) return;
+            let sug =Create a suggestion dropdown (simplified)
+            if (matches.length > 0) addCityWithExplosion(matches[0]), this.value = '';
         });
 
-        listEl.appendChild(card);
-      });
-    }
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            earth.rotation.y += 0.0015;
+            atmosphere.rotation.y += 0.001;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
 
-    document.getElementById("addBtn").onclick = () => {
-      const name = document.getElementById("cityInput").value.trim();
-      const tz = tzSelect.value;
-      if (!name) { document.getElementById("cityInput").focus(); return; }
-      cities.push({ name, tz });
-      document.getElementById("cityInput").value = "";
-      render();
-    };
-    document.getElementById("fmtBtn").onclick = () => { is24 = !is24; render(); };
-    document.getElementById("themeBtn").onclick = () => {
-      theme = (theme === "dark" ? "light" : "dark");
-      document.body.setAttribute("data-theme", theme);
-      render();
-    };
-
-    render();
-    setInterval(render, 1000);
-  </script>
+        window.addEventListener('resize', () => {
+            camera.aspect = innerWidth/innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+    </script>
 </body>
 </html>
