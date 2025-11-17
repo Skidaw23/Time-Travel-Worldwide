@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Quantum Nebula Globe Clock – Fully Static Demo</title>
-    <!-- Three.js UMD build (defines global THREE) -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
-    <!-- OrbitControls UMD, must be loaded after Three.js -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/examples/js/controls/OrbitControls.min.js"></script>
+    <!-- Local versions of Three.js and OrbitControls.js, must be in js/ -->
+    <script src="js/three.min.js"></script>
+    <script src="js/OrbitControls.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: #fff; }
         canvas { display: block;}
@@ -53,7 +52,6 @@
     <div id="suggestions" style="display:none"></div>
 </div>
 <script>
-// ==== STATIC DEMO CITY DATA ====
 const cityData = {
     'Amsterdam': { tz: 'Europe/Amsterdam', temp: 12, weather: 'clouds', desc: 'Partly cloudy', icon: '03d' },
     'London':    { tz: 'Europe/London', temp: 10, weather: 'rain', desc: 'Rain showers', icon: '09d' },
@@ -86,21 +84,17 @@ function getWeatherGradient(main, icon) {
 }
 const activeCities = ['Amsterdam', 'Tokyo', 'New York'];
 const cards = {};
-
-// ==== GLOBE SETUP (Three.js) ====
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('globe-container').appendChild(renderer.domElement);
-// Stars
 const starsGeom = new THREE.BufferGeometry();
 const verts = [];
 for(let i=0;i<9000;i++) verts.push((Math.random()-0.5)*3200, (Math.random()-0.5)*3200, (Math.random()-0.5)*900);
 starsGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
 scene.add(new THREE.Points(starsGeom, new THREE.PointsMaterial({color:0xffffff,size:0.8})));
-// Globe!
 const globeTexture = new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/9/97/The_Blue_Marble%2C_Eastern_Hemisphere.jpg');
 const earth = new THREE.Mesh(
     new THREE.SphereGeometry(5,64,64),
@@ -112,17 +106,16 @@ const atmosphere = new THREE.Mesh(
     new THREE.MeshBasicMaterial({ color:0x00ffff, transparent:true, opacity:0.13, side:THREE.BackSide })
 );
 scene.add(atmosphere);
-// Lighting
 scene.add(new THREE.AmbientLight(0x4040ff, 0.9));
 const dl = new THREE.DirectionalLight(0xffffff,2);
 dl.position.set(60,40,50);
 scene.add(dl);
+// OrbitControls UMD assigns itself to THREE.OrbitControls or window.OrbitControls
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.35;
 controls.enablePan = false; controls.minDistance=12; controls.maxDistance=30;
 camera.position.set(0,0,18);
 
-// ==== CITY CARDS ====
 function cityCardPosition(idx,total) {
     const centerX = window.innerWidth/2-130, centerY = window.innerHeight/2-100,
           spacingX = 320, spacingY = 180;
@@ -164,7 +157,6 @@ function addCityWithExplosion(city) {
 }
 activeCities.forEach((city,i)=>setTimeout(()=>{if(!cards[city])addCityWithExplosion(city);},i*650));
 
-// ==== SEARCH / SUGGESTIONS ====
 const searchInput=document.getElementById('search-input');
 const suggestionsDiv=document.getElementById('suggestions');
 function updateSuggestions(val) {
@@ -200,7 +192,6 @@ searchInput.addEventListener('keydown',function(e){
         }
     }
 });
-// ==== ANIMATE LOOP ====
 function animate() {
     requestAnimationFrame(animate);
     earth.rotation.y+=0.0012;
