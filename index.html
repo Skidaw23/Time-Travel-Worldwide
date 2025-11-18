@@ -181,15 +181,17 @@
     function svgIconStub(code){
       // Minimal inline icon replacement (avoid remote PNG dependency).
       // Map codes to simple glyph color variations:
-      const color = code.startsWith('01') ? '#ffd700'
-                 : code.startsWith('02') ? '#e0e0e0'
-                 : code.startsWith('03') ? '#b0b0b0'
-                 : code.startsWith('04') ? '#888'
-                 : code.startsWith('09') ? '#4fa4ff'
-                 : code.startsWith('10') ? '#3178c6'
-                 : code.startsWith('11') ? '#ff4f4f'
-                 : code.startsWith('13') ? '#ffffff'
-                 : '#00ffff';
+      const colorMap = {
+        '01': '#ffd700',
+        '02': '#e0e0e0',
+        '03': '#b0b0b0',
+        '04': '#888',
+        '09': '#4fa4ff',
+        '10': '#3178c6',
+        '11': '#ff4f4f',
+        '13': '#ffffff',
+      };
+      const color = colorMap[code.substring(0, 2)] || '#00ffff';
       return `<svg class="icon" viewBox="0 0 64 64" fill="none" stroke="${color}" stroke-width="3">
         <circle cx="32" cy="32" r="20" fill="${color}22"></circle>
         <path d="M20 32h24M32 20v24" stroke-linecap="round"/>
