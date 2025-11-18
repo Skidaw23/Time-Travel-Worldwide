@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/(.*)",
+      "headers": {
+        "Content-Security-Policy": "frame-ancestors 'self' https://*.notion.site https://notion.so",
+        "X-Frame-Options": "ALLOW-FROM https://notion.so"
+      },
+      "continue": true
+    }
+  ]
+}
