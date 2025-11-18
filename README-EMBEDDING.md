@@ -31,32 +31,29 @@ GitHub Pages adds frame-blocking headers (e.g., `X-Frame-Options`) that prevent 
 The `vercel.json` configuration:
 ```json
 {
-  "version": 2,
-  "routes": [
+  "headers": [
     {
-      "src": "/(.*)",
-      "headers": {
-        "Content-Security-Policy": "frame-ancestors 'self' https://*.notion.site https://notion.so",
-        "X-Frame-Options": "ALLOW-FROM https://notion.so"
-      },
-      "continue": true
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors https://www.notion.so https://notion.so https://*.notion.so https://*.notion.site;"
+        }
+      ]
     }
   ]
 }
 ```
 
 **Breakdown**:
-- `Content-Security-Policy: frame-ancestors 'self' https://*.notion.site https://notion.so`  
+- `Content-Security-Policy: frame-ancestors https://www.notion.so https://notion.so https://*.notion.so https://*.notion.site;`  
   Allows the site to be embedded in:
-  - Same origin (`'self'`)
-  - All Notion workspace subdomains (`*.notion.site`)
-  - Main Notion domain (`notion.so`)
+  - Main Notion domain (`https://www.notion.so`)
+  - Notion domain without www (`https://notion.so`)
+  - All Notion workspace subdomains (`https://*.notion.so`)
+  - All Notion site subdomains (`https://*.notion.site`)
   
-- `X-Frame-Options: ALLOW-FROM https://notion.so`  
-  Legacy fallback for older browsers (though deprecated, some tools still respect it)
-
-- `"continue": true`  
-  Ensures Vercel continues processing other routing rules
+- **X-Frame-Options is NOT set** — the obsolete `ALLOW-FROM` directive has been removed as it doesn't work with modern browsers. The CSP `frame-ancestors` directive is the modern, standardized approach.
 
 ## Security Considerations
 
@@ -86,8 +83,7 @@ If you prefer not to use Vercel, other platforms with custom header support incl
 Example for Netlify (`_headers` file):
 ```
 /*
-  Content-Security-Policy: frame-ancestors 'self' https://*.notion.site https://notion.so
-  X-Frame-Options: ALLOW-FROM https://notion.so
+  Content-Security-Policy: frame-ancestors https://www.notion.so https://notion.so https://*.notion.so https://*.notion.site;
 ```
 
 ## Troubleshooting
@@ -98,14 +94,26 @@ Example for Netlify (`_headers` file):
 - Ensure you used the Vercel URL (not GitHub Pages URL)
 
 ### Security warnings in browser console
-- Modern browsers deprecate `X-Frame-Options: ALLOW-FROM`
-- The `Content-Security-Policy: frame-ancestors` directive is the standard approach
-- Both are included for maximum compatibility
+- No security warnings should appear with the current configuration
+- The `Content-Security-Policy: frame-ancestors` directive is the modern standard approach
+- `X-Frame-Options: ALLOW-FROM` has been removed as it's obsolete and not supported by modern browsers
 
 ### Want to restrict to your specific Notion workspace only?
 Edit `vercel.json` to:
 ```json
-"Content-Security-Policy": "frame-ancestors 'self' https://your-workspace.notion.site"
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors https://your-workspace.notion.site;"
+        }
+      ]
+    }
+  ]
+}
 ```
 Replace `your-workspace` with your actual Notion workspace subdomain.
 
