@@ -22,7 +22,7 @@
     #ui-overlay { position:fixed; inset:0; pointer-events:none; z-index:2; }
     #search-bar { pointer-events:auto; position:absolute; top:30px; left:50%; transform:translateX(-50%); width:340px; z-index:100; }
     #search-input { width:100%; padding:16px 24px; border:none; border-radius:30px;
-      background:rgba(255,255,255,0.1); color:#fff; backdrop-filter:blur(15px);
+      background:rgba(255,255,255,0.1); color:#fff; -webkit-backdrop-filter:blur(15px); backdrop-filter:blur(15px);
       box-shadow:0 8px 32px rgba(0,255,255,0.3); transition:.4s; font-size:1.15em; }
     #search-input:focus { outline:none; box-shadow:0 0 40px rgba(0,255,255,0.85); transform:scale(1.05); }
     #suggestions { pointer-events:auto; position:absolute; width:340px; left:50%; transform:translateX(-50%); top:68px;
@@ -33,7 +33,7 @@
 
     .city-card {
       position:absolute; padding:24px 32px; border-radius:28px;
-      background:rgba(255,255,255,0.06); backdrop-filter:blur(22px);
+      background:rgba(255,255,255,0.06); -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px);
       box-shadow:0 0 50px rgba(0,255,255,0.5); pointer-events:auto;
       animation:float 8s ease-in-out infinite; border:1px solid rgba(0,255,255,0.4);
       transition:.5s cubic-bezier(0.175,0.885,0.32,1.475); width:260px; text-align:center;
@@ -62,7 +62,7 @@
   </style>
 </head>
 <body>
-  <div id="globe-container" aria-label="Animated 3D globe visualization"></div>
+  <div id="globe-container" role="img" aria-label="Animated 3D globe visualization"></div>
   <div id="ui-overlay">
     <div id="search-bar">
       <input id="search-input" type="text" placeholder="Add city → Tokyo, Paris, Miami..." autocomplete="off" aria-label="Add city" />
@@ -141,7 +141,7 @@
 
     // Globe
     const globeTexture = new THREE.TextureLoader().load(
-      'https://upload.wikimedia.org/wikipedia/commons/9/97/The_Blue_Marble%2C_Eastern_Hemisphere.jpg',
+      'https://unpkg.com/three-globe@2.31.1/example/img/earth-blue-marble.jpg',
       undefined,
       undefined,
       (err)=>console.error('Texture load error:', err)
@@ -294,7 +294,16 @@
     });
 
     // ---------- Animation loop ----------
-    renderer.setAnimationLoop(()=>{
+    let lastTime = 0;
+    const targetFPS = 60;
+    const frameInterval = 1000 / targetFPS;
+    
+    renderer.setAnimationLoop((time)=>{
+      // Throttle to target FPS for performance
+      const elapsed = time - lastTime;
+      if (elapsed < frameInterval) return;
+      lastTime = time - (elapsed % frameInterval);
+      
       earth.rotation.y += 0.0012;
       atmosphere.rotation.y += 0.0008;
       controls.update();
