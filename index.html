@@ -1,210 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Quantum Nebula Globe Clock – Fully Static Demo</title>
-    <!-- Local versions of Three.js and OrbitControls.js, must be in js/ -->
-    <script src="js/three.min.js"></script>
-    <script src="js/OrbitControls.js"></script>
-    <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: #fff; }
-        canvas { display: block;}
-        #globe-container { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index:0;}
-        #ui-overlay { position: fixed; inset: 0; pointer-events: none; z-index:2;}
-        #search-bar { pointer-events: auto; position: absolute; top: 30px; left: 50%; transform: translateX(-50%); width: 340px; z-index: 100;}
-        #search-input { width: 100%; padding: 16px 24px; border: none; border-radius: 30px;
-            background: rgba(255,255,255,0.1); color: #fff; backdrop-filter: blur(15px);
-            box-shadow: 0 8px 32px rgba(0,255,255,0.3); transition: all 0.4s; font-size: 1.2em;}
-        #search-input:focus { outline: none; box-shadow: 0 0 40px rgba(0,255,255,0.8); transform: scale(1.05);}
-        #suggestions { pointer-events:auto; position:absolute; width:340px; left:50%; transform:translateX(-50%); top: 68px;
-            background: rgba(0, 0, 0, 0.95); color: #fff; border-radius: 0 0 24px 24px;
-            z-index: 120; box-shadow: 0 4px 32px rgba(0,255,255,0.20);}
-        .suggestion-item { padding:8px 20px; cursor:pointer; transition: background 0.18s;}
-        .suggestion-item:hover { background: rgba(0,255,255,0.09); color: cyan;}
-        .city-card {
-            position: absolute; padding: 24px 32px; border-radius: 28px;
-            background: rgba(255,255,255,0.06); backdrop-filter: blur(22px);
-            box-shadow: 0 0 50px rgba(0,255,255,0.5); pointer-events: auto;
-            animation: float 8s ease-in-out infinite; border: 1px solid rgba(0,255,255,0.4);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.475); width: 260px; text-align: center;
-        }
-        .city-card::before { content: ''; position: absolute; inset: -4px; border-radius: 32px;
-            background: conic-gradient(from 0deg at 50% 50%, #00ffff, #ff00ff, #ffff00, #00ff00, #00ffff);
-            z-index: -1; animation: pulseBorder 6s linear infinite; opacity: 0.8;}
-        .city-card:hover { transform: translateY(-20px) scale(1.1); box-shadow: 0 0 100px rgba(0,255,255,1);}
-        .city-name { font-size: 1.5em; font-weight: bold; text-shadow: 0 0 15px cyan; margin-bottom: 8px;}
-        .time { font-size: 3.5em; font-weight: 900; letter-spacing: -3px; text-shadow: 0 0 30px; margin: 8px 0;}
-        .weather { font-size: 1.8em; font-weight: bold; margin: 10px 0;}
-        .temp { font-size: 2.2em; margin: 5px 0;}
-        .desc { font-size: 1.1em; opacity: 0.9;}
-        .icon { width: 60px; margin: 0 auto;}
-        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
-        @keyframes pulseBorder { to { transform: rotate(360deg); } }
-    </style>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1.0"
+  />
+  <title>Quantum Nebula Globe Clock – ES Module</title>
+  <meta name="description" content="Spinning Three.js globe with static city time & weather demo using ES modules." />
+  <style>
+    body { margin:0; overflow:hidden; background:#000; font-family:'Segoe UI',system-ui,sans-serif; color:#fff; }
+    #globe-container { position:fixed; inset:0; width:100vw; height:100vh; z-index:0; }
+    #ui-overlay { position:fixed; inset:0; pointer-events:none; z-index:2; }
+    #search-bar { pointer-events:auto; position:absolute; top:30px; left:50%; transform:translateX(-50%); width:340px; z-index:100; }
+    #search-input { width:100%; padding:16px 24px; border:none; border-radius:30px;
+      background:rgba(255,255,255,0.1); color:#fff; backdrop-filter:blur(15px);
+      box-shadow:0 8px 32px rgba(0,255,255,0.3); transition:.4s; font-size:1.15em; }
+    #search-input:focus { outline:none; box-shadow:0 0 40px rgba(0,255,255,0.85); transform:scale(1.05); }
+    #suggestions { pointer-events:auto; position:absolute; width:340px; left:50%; transform:translateX(-50%); top:68px;
+      background:rgba(0,0,0,0.95); color:#fff; border-radius:0 0 24px 24px;
+      z-index:120; box-shadow:0 4px 32px rgba(0,255,255,0.25); max-height:260px; overflow-y:auto; }
+    .suggestion-item { padding:8px 20px; cursor:pointer; transition:background .18s; }
+    .suggestion-item:hover { background:rgba(0,255,255,0.09); color:cyan; }
+
+    .city-card {
+      position:absolute; padding:24px 32px; border-radius:28px;
+      background:rgba(255,255,255,0.06); backdrop-filter:blur(22px);
+      box-shadow:0 0 50px rgba(0,255,255,0.5); pointer-events:auto;
+      animation:float 8s ease-in-out infinite; border:1px solid rgba(0,255,255,0.4);
+      transition:.5s cubic-bezier(0.175,0.885,0.32,1.475); width:260px; text-align:center;
+    }
+    .city-card::before {
+      content:''; position:absolute; inset:-4px; border-radius:32px;
+      background:conic-gradient(from 0deg at 50% 50%, #00ffff, #ff00ff, #ffff00, #00ff00, #00ffff);
+      z-index:-1; animation:pulseBorder 6s linear infinite; opacity:.8;
+    }
+    .city-card:hover { transform:translateY(-20px) scale(1.1); box-shadow:0 0 100px rgba(0,255,255,1); }
+    .city-name { font-size:1.5em; font-weight:600; text-shadow:0 0 15px cyan; margin-bottom:8px; }
+    .time { font-size:3.2em; font-weight:800; letter-spacing:-2px; margin:6px 0 2px; }
+    .temp { font-size:1.9em; margin:4px 0; font-weight:600; }
+    .weather { font-size:1.1em; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .desc { font-size:0.95em; opacity:0.85; }
+    .icon { width:54px; height:54px; }
+    @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-30px); } }
+    @keyframes pulseBorder { to { transform:rotate(360deg); } }
+    ::selection { background:#00ffff; color:#000; }
+    @media (max-width:640px) {
+      .city-card { width:220px; padding:20px; }
+      .time { font-size:2.4em; }
+      #search-bar { width:82vw; }
+      #search-input { font-size:1em; }
+    }
+  </style>
 </head>
 <body>
-<div id="globe-container"></div>
-<div id="ui-overlay">
+  <div id="globe-container" aria-label="Animated 3D globe visualization"></div>
+  <div id="ui-overlay">
     <div id="search-bar">
-        <input id="search-input" type="text" placeholder="Add city → Tokyo, Paris, Miami..." autocomplete="off">
+      <input id="search-input" type="text" placeholder="Add city → Tokyo, Paris, Miami..." autocomplete="off" aria-label="Add city" />
     </div>
-    <div id="suggestions" style="display:none"></div>
-</div>
-<script>
-const cityData = {
-    'Amsterdam': { tz: 'Europe/Amsterdam', temp: 12, weather: 'clouds', desc: 'Partly cloudy', icon: '03d' },
-    'London':    { tz: 'Europe/London', temp: 10, weather: 'rain', desc: 'Rain showers', icon: '09d' },
-    'Tokyo':     { tz: 'Asia/Tokyo', temp: 20, weather: 'clear', desc: 'Sunny', icon: '01d' },
-    'New York':  { tz: 'America/New_York', temp: 7, weather: 'snow', desc: 'Light snow', icon: '13d' },
-    'Dubai':     { tz: 'Asia/Dubai', temp: 28, weather: 'clear', desc: 'Sunny', icon: '01d' },
-    'Los Angeles':{tz: 'America/Los_Angeles', temp: 22, weather: 'clear', desc: 'Sunny', icon: '01d' },
-    'Singapore': { tz: 'Asia/Singapore', temp: 31, weather: 'rain', desc: 'Heavy rain', icon: '10d' },
-    'Sydney':    { tz: 'Australia/Sydney', temp: 25, weather: 'clouds', desc: 'Partly cloudy', icon: '02d' },
-    'Paris':     { tz: 'Europe/Paris', temp: 14, weather: 'clouds', desc: 'Cloudy', icon: '04d' },
-    'Miami':     { tz: 'America/New_York', temp: 27, weather: 'rain', desc: 'Thunderstorm', icon: '11d' },
-    'Berlin':    { tz: 'Europe/Berlin', temp: 9, weather: 'clouds', desc: 'Foggy', icon: '50d' }
-};
-const weatherGradients = {
-    rain: 'linear-gradient(135deg, #232526, #414345)',
-    snow: 'linear-gradient(135deg, #e6e9f0, #eef2f3)',
-    clouds: 'linear-gradient(135deg, #757f9a, #d7dde8)',
-    clear: 'linear-gradient(135deg, #ff6e7f, #bfe9ff)',
-    thunder: 'linear-gradient(135deg, #141e30, #243b55)',
-    default: 'linear-gradient(135deg, #1e3c72, #2a5298)'
-};
-function getWeatherGradient(main, icon) {
-    if (!main) return weatherGradients.default;
-    if(main.includes('rain')) return weatherGradients.rain;
-    if(main.includes('snow')) return weatherGradients.snow;
-    if(main.includes('cloud')) return weatherGradients.clouds;
-    if(main.includes('clear')) return weatherGradients.clear;
-    if(main.includes('thunder')) return weatherGradients.thunder;
-    return weatherGradients.default;
-}
-const activeCities = ['Amsterdam', 'Tokyo', 'New York'];
-const cards = {};
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-document.getElementById('globe-container').appendChild(renderer.domElement);
-const starsGeom = new THREE.BufferGeometry();
-const verts = [];
-for(let i=0;i<9000;i++) verts.push((Math.random()-0.5)*3200, (Math.random()-0.5)*3200, (Math.random()-0.5)*900);
-starsGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
-scene.add(new THREE.Points(starsGeom, new THREE.PointsMaterial({color:0xffffff,size:0.8})));
-const globeTexture = new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/9/97/The_Blue_Marble%2C_Eastern_Hemisphere.jpg');
-const earth = new THREE.Mesh(
-    new THREE.SphereGeometry(5,64,64),
-    new THREE.MeshPhongMaterial({ map: globeTexture, color: 0x2266bb, emissive: 0x112255 })
-);
-scene.add(earth);
-const atmosphere = new THREE.Mesh(
-    new THREE.SphereGeometry(5.15,64,64),
-    new THREE.MeshBasicMaterial({ color:0x00ffff, transparent:true, opacity:0.13, side:THREE.BackSide })
-);
-scene.add(atmosphere);
-scene.add(new THREE.AmbientLight(0x4040ff, 0.9));
-const dl = new THREE.DirectionalLight(0xffffff,2);
-dl.position.set(60,40,50);
-scene.add(dl);
-// OrbitControls UMD assigns itself to THREE.OrbitControls or window.OrbitControls
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.35;
-controls.enablePan = false; controls.minDistance=12; controls.maxDistance=30;
-camera.position.set(0,0,18);
+    <div id="suggestions" style="display:none" aria-live="polite"></div>
+  </div>
 
-function cityCardPosition(idx,total) {
-    const centerX = window.innerWidth/2-130, centerY = window.innerHeight/2-100,
-          spacingX = 320, spacingY = 180;
-    let offsetX = ((idx%3)-1)*spacingX, offsetY = (Math.floor(idx/3)-Math.floor(total/6))*spacingY;
-    return { left: `${centerX+offsetX}px`, top: `${centerY+offsetY}px` };
-}
-function updateCard(card, city) {
-    const data = cityData[city];
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-GB', { timeZone: data.tz, hour:'2-digit', minute:'2-digit', hour12:false });
-    const dateStr = now.toLocaleDateString('en-GB', { timeZone: data.tz, weekday:'short', day:'numeric', month:'short' });
-    const gradient = getWeatherGradient(data.weather, data.icon);
-    let iconImg = data.icon
-      ? `<img class="icon" src="https://openweathermap.org/img/wn/${data.icon}@2x.png" alt="">` : '';
-    card.innerHTML = `
-        <div class="city-name">${city}</div>
-        <div class="time">${timeStr}</div>
-        <div class="temp">${data.temp}°C</div>
-        <div class="weather">${iconImg}${data.desc}</div>
-        <div class="desc">${dateStr}</div>
-    `;
-    card.style.background = `${gradient}, rgba(255,255,255,0.06)`;
-}
-function addCityWithExplosion(city) {
-    if(!cityData[city] || activeCities.includes(city)) return;
-    activeCities.push(city);
-    const card = document.createElement('div');
-    card.className = 'city-card';
-    card.style.left = cityCardPosition(activeCities.length-1,activeCities.length).left;
-    card.style.top = cityCardPosition(activeCities.length-1,activeCities.length).top;
-    card.style.opacity='0'; card.style.transform='scale(0)';
-    document.getElementById('ui-overlay').appendChild(card);
-    cards[city]=card;
-    setTimeout(()=>{
-        card.style.transition='all 1s cubic-bezier(0.175, 0.885, 0.32, 1.475)';
-        card.style.opacity='1'; card.style.transform='scale(1)';
-        updateCard(card,city);
-    },180);
-}
-activeCities.forEach((city,i)=>setTimeout(()=>{if(!cards[city])addCityWithExplosion(city);},i*650));
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/OrbitControls.js';
 
-const searchInput=document.getElementById('search-input');
-const suggestionsDiv=document.getElementById('suggestions');
-function updateSuggestions(val) {
-    if (!val || val.length < 2) { suggestionsDiv.innerHTML=''; suggestionsDiv.style.display='none'; return; }
-    const matches = Object.keys(cityData).filter(
-        c => c.toLowerCase().includes(val.toLowerCase()) && !activeCities.includes(c)
+    // ---------- Static demo city & weather data ----------
+    const cityData = {
+      Amsterdam: { tz: 'Europe/Amsterdam', temp: 12, weather: 'clouds', desc: 'Partly cloudy', icon: '03d' },
+      London:    { tz: 'Europe/London', temp: 10, weather: 'rain',   desc: 'Rain showers',   icon: '09d' },
+      Tokyo:     { tz: 'Asia/Tokyo',    temp: 20, weather: 'clear',  desc: 'Sunny',          icon: '01d' },
+      'New York':{ tz: 'America/New_York', temp: 7, weather: 'snow', desc: 'Light snow',     icon: '13d' },
+      Dubai:     { tz: 'Asia/Dubai',    temp: 28, weather: 'clear',  desc: 'Sunny',          icon: '01d' },
+      'Los Angeles':{ tz:'America/Los_Angeles', temp:22, weather:'clear', desc:'Sunny', icon:'01d' },
+      Singapore: { tz:'Asia/Singapore', temp:31, weather:'rain', desc:'Heavy rain', icon:'10d' },
+      Sydney:    { tz:'Australia/Sydney', temp:25, weather:'clouds', desc:'Partly cloudy', icon:'02d' },
+      Paris:     { tz:'Europe/Paris', temp:14, weather:'clouds', desc:'Cloudy', icon:'04d' },
+      Miami:     { tz:'America/New_York', temp:27, weather:'rain', desc:'Thunderstorm', icon:'11d' },
+      Berlin:    { tz:'Europe/Berlin', temp:9, weather:'clouds', desc:'Foggy', icon:'50d' }
+    };
+
+    const weatherGradients = {
+      rain:'linear-gradient(135deg,#232526,#414345)',
+      snow:'linear-gradient(135deg,#e6e9f0,#eef2f3)',
+      clouds:'linear-gradient(135deg,#757f9a,#d7dde8)',
+      clear:'linear-gradient(135deg,#ff6e7f,#bfe9ff)',
+      thunder:'linear-gradient(135deg,#141e30,#243b55)',
+      default:'linear-gradient(135deg,#1e3c72,#2a5298)'
+    };
+    function getWeatherGradient(main) {
+      if(!main) return weatherGradients.default;
+      if(main.includes('rain')) return weatherGradients.rain;
+      if(main.includes('snow')) return weatherGradients.snow;
+      if(main.includes('cloud')) return weatherGradients.clouds;
+      if(main.includes('clear')) return weatherGradients.clear;
+      if(main.includes('thunder')) return weatherGradients.thunder;
+      return weatherGradients.default;
+    }
+
+    // ---------- Three.js scene setup ----------
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
     );
-    if(matches.length===0) {
-        suggestionsDiv.innerHTML = '<div class="suggestion-item" style="color:gray;">No matches</div>';
-        suggestionsDiv.style.display='block'; return;
+    camera.position.set(0,0,18);
+
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.domElement.setAttribute('aria-hidden','true');
+    document.getElementById('globe-container').appendChild(renderer.domElement);
+
+    // Stars
+    const starsGeom = new THREE.BufferGeometry();
+    const starCount = 9000;
+    const starVerts = new Float32Array(starCount * 3);
+    for(let i=0;i<starCount;i++){
+      starVerts[i*3]   = (Math.random()-0.5)*3200;
+      starVerts[i*3+1] = (Math.random()-0.5)*3200;
+      starVerts[i*3+2] = (Math.random()-0.5)*900;
     }
-    suggestionsDiv.innerHTML = matches.map(m=>`<div class="suggestion-item">${m}</div>`).join('');
-    suggestionsDiv.style.display='block';
-    suggestionsDiv.querySelectorAll('.suggestion-item').forEach(item=>{
-        item.onclick=()=>{
-            addCityWithExplosion(item.textContent);
-            searchInput.value=''; updateSuggestions('');
+    starsGeom.setAttribute('position', new THREE.BufferAttribute(starVerts,3));
+    const stars = new THREE.Points(
+      starsGeom,
+      new THREE.PointsMaterial({ color:0xffffff, size:0.8, sizeAttenuation:true })
+    );
+    scene.add(stars);
+
+    // Globe
+    const globeTexture = new THREE.TextureLoader().load(
+      'https://upload.wikimedia.org/wikipedia/commons/9/97/The_Blue_Marble%2C_Eastern_Hemisphere.jpg',
+      undefined,
+      undefined,
+      (err)=>console.error('Texture load error:', err)
+    );
+    const earth = new THREE.Mesh(
+      new THREE.SphereGeometry(5,64,64),
+      new THREE.MeshPhongMaterial({ map:globeTexture, color:0x2266bb, emissive:0x112255 })
+    );
+    scene.add(earth);
+
+    const atmosphere = new THREE.Mesh(
+      new THREE.SphereGeometry(5.15,64,64),
+      new THREE.MeshBasicMaterial({ color:0x00ffff, transparent:true, opacity:0.13, side:THREE.BackSide })
+    );
+    scene.add(atmosphere);
+
+    // Lighting
+    scene.add(new THREE.AmbientLight(0x4040ff, 0.9));
+    const dirLight = new THREE.DirectionalLight(0xffffff,2);
+    dirLight.position.set(60,40,50);
+    scene.add(dirLight);
+
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.35;
+    controls.enablePan = false;
+    controls.minDistance = 12;
+    controls.maxDistance = 30;
+
+    // ---------- City cards & UI ----------
+    const activeCities = ['Amsterdam','Tokyo','New York'];
+    const cards = {};
+    function cityCardPosition(idx,total) {
+      const centerX = window.innerWidth/2 - 130;
+      const centerY = window.innerHeight/2 - 100;
+      const spacingX = 320;
+      const spacingY = 180;
+      const offsetX = ((idx%3)-1)*spacingX;
+      const offsetY = (Math.floor(idx/3)-Math.floor(total/6))*spacingY;
+      return { left:`${centerX+offsetX}px`, top:`${centerY+offsetY}px` };
+    }
+
+    function svgIconStub(code){
+      // Minimal inline icon replacement (avoid remote PNG dependency).
+      // Map codes to simple glyph color variations:
+      const colorMap = {
+        '01': '#ffd700',
+        '02': '#e0e0e0',
+        '03': '#b0b0b0',
+        '04': '#888',
+        '09': '#4fa4ff',
+        '10': '#3178c6',
+        '11': '#ff4f4f',
+        '13': '#ffffff',
+        '50': '#a0a0a0',
+      };
+      const color = colorMap[code.substring(0, 2)] || '#00ffff';
+      return `<svg class="icon" viewBox="0 0 64 64" fill="none" stroke="${color}" stroke-width="3" aria-hidden="true">
+        <circle cx="32" cy="32" r="20" fill="${color}22"></circle>
+        <path d="M20 32h24M32 20v24" stroke-linecap="round"/>
+      </svg>`;
+    }
+
+    function updateCard(card, city) {
+      const data = cityData[city];
+      if(!data) return;
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-GB', { timeZone:data.tz, hour:'2-digit', minute:'2-digit', hour12:false });
+      const dateStr = now.toLocaleDateString('en-GB', { timeZone:data.tz, weekday:'short', day:'numeric', month:'short' });
+      const gradient = getWeatherGradient(data.weather);
+      const iconSvg = svgIconStub(data.icon);
+      card.innerHTML = `
+        <div class="city-name">${city}</div>
+        <div class="time" aria-label="Local time">${timeStr}</div>
+        <div class="temp" aria-label="Temperature">${data.temp}°C</div>
+        <div class="weather">${iconSvg}${data.desc}</div>
+        <div class="desc" aria-label="Date">${dateStr}</div>
+      `;
+      card.style.background = `${gradient}, rgba(255,255,255,0.06)`;
+    }
+
+    function addCityWithExplosion(city){
+      if(!cityData[city] || activeCities.includes(city)) return;
+      activeCities.push(city);
+      const card = document.createElement('div');
+      card.className='city-card';
+      const pos = cityCardPosition(activeCities.length-1, activeCities.length);
+      card.style.left = pos.left;
+      card.style.top  = pos.top;
+      card.style.opacity='0';
+      card.style.transform='scale(0)';
+      document.getElementById('ui-overlay').appendChild(card);
+      cards[city] = card;
+      setTimeout(()=>{
+        card.style.transition='all 1s cubic-bezier(0.175,0.885,0.32,1.475)';
+        card.style.opacity='1';
+        card.style.transform='scale(1)';
+        updateCard(card, city);
+      },180);
+    }
+
+    activeCities.forEach((c,i)=>setTimeout(()=>{ if(!cards[c]) addCityWithExplosion(c); }, i*650));
+
+    // Search suggestions
+    const searchInput = document.getElementById('search-input');
+    const suggestionsDiv = document.getElementById('suggestions');
+
+    function updateSuggestions(val){
+      if(!val || val.length < 2){
+        suggestionsDiv.innerHTML='';
+        suggestionsDiv.style.display='none';
+        return;
+      }
+      const matches = Object.keys(cityData).filter(c =>
+        c.toLowerCase().includes(val.toLowerCase()) && !activeCities.includes(c)
+      );
+      if(!matches.length){
+        suggestionsDiv.innerHTML='<div class="suggestion-item" style="color:gray;">No matches</div>';
+        suggestionsDiv.style.display='block';
+        return;
+      }
+      suggestionsDiv.innerHTML = matches.map(m=>`<div class="suggestion-item" role="option">${m}</div>`).join('');
+      suggestionsDiv.style.display='block';
+      suggestionsDiv.querySelectorAll('.suggestion-item').forEach(item=>{
+        item.onclick = ()=>{
+          addCityWithExplosion(item.textContent.trim());
+          searchInput.value='';
+          updateSuggestions('');
         };
-    });
-}
-searchInput.addEventListener('input',function(){updateSuggestions(this.value.trim());});
-document.body.addEventListener('click',e=>{
-    if(e.target!==searchInput) updateSuggestions('');
-},true);
-searchInput.addEventListener('keydown',function(e){
-    if(e.key==='Enter'){
-        const val=this.value.trim();
-        const matches=Object.keys(cityData).filter(
-          c=>c.toLowerCase().includes(val.toLowerCase())&&!activeCities.includes(c)
-        );
-        if(matches.length){addCityWithExplosion(matches[0]);
-          this.value=''; updateSuggestions('');
-        }
+      });
     }
-});
-function animate() {
-    requestAnimationFrame(animate);
-    earth.rotation.y+=0.0012;
-    atmosphere.rotation.y+=0.0008;
-    controls.update();
-    renderer.render(scene,camera);
-}
-animate();
-window.addEventListener('resize',()=>{
-    camera.aspect=window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth,window.innerHeight);
-});
-</script>
+    searchInput.addEventListener('input', ()=> updateSuggestions(searchInput.value.trim()));
+    document.body.addEventListener('click', e=>{
+      if(e.target !== searchInput) updateSuggestions('');
+    }, true);
+    searchInput.addEventListener('keydown', e=>{
+      if(e.key === 'Enter'){
+        const val = searchInput.value.trim();
+        const matches = Object.keys(cityData).filter(c =>
+          c.toLowerCase().includes(val.toLowerCase()) && !activeCities.includes(c)
+        );
+        if(matches.length){
+          addCityWithExplosion(matches[0]);
+          searchInput.value='';
+          updateSuggestions('');
+        }
+      }
+    });
+
+    // ---------- Animation loop ----------
+    renderer.setAnimationLoop(()=>{
+      earth.rotation.y += 0.0012;
+      atmosphere.rotation.y += 0.0008;
+      controls.update();
+      renderer.render(scene, camera);
+    });
+
+    // ---------- Resize handling ----------
+    window.addEventListener('resize', ()=>{
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      // Reposition cards
+      activeCities.forEach((city, idx)=>{
+        const card = cards[city];
+        if(card){
+          const pos = cityCardPosition(idx, activeCities.length);
+          card.style.left = pos.left;
+          card.style.top  = pos.top;
+        }
+      });
+    });
+
+    // ---------- Basic error boundary ----------
+    window.addEventListener('error', (ev)=>{
+      console.error('Runtime error:', ev.message);
+    });
+  </script>
 </body>
 </html>
