@@ -304,8 +304,8 @@
       if (elapsed < frameInterval) return;
       lastTime = time - (elapsed % frameInterval);
       
-      earth.rotation.y += 0.0012;
-      atmosphere.rotation.y += 0.0008;
+      earth.rotation.y += 0.0012 * (elapsed / frameInterval);
+      atmosphere.rotation.y += 0.0008 * (elapsed / frameInterval);
       controls.update();
       renderer.render(scene, camera);
     });
