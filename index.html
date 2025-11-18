@@ -8,6 +8,14 @@
   />
   <title>Quantum Nebula Globe Clock – ES Module</title>
   <meta name="description" content="Spinning Three.js globe with static city time & weather demo using ES modules." />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+      }
+    }
+  </script>
   <style>
     body { margin:0; overflow:hidden; background:#000; font-family:'Segoe UI',system-ui,sans-serif; color:#fff; }
     #globe-container { position:fixed; inset:0; width:100vw; height:100vh; z-index:0; }
@@ -63,8 +71,8 @@
   </div>
 
   <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js';
-    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/controls/OrbitControls.js';
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ---------- Static demo city & weather data ----------
     const cityData = {
