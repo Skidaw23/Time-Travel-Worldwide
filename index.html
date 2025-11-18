@@ -294,11 +294,21 @@
     });
 
     // ---------- Animation loop ----------
-    let lastTime = 0;
+    let lastTime = null;
     const targetFPS = 60;
     const frameInterval = 1000 / targetFPS;
     
     renderer.setAnimationLoop((time)=>{
+      // Initialize lastTime on first frame
+      if (lastTime === null) {
+        lastTime = time;
+        earth.rotation.y += 0.0012;
+        atmosphere.rotation.y += 0.0008;
+        controls.update();
+        renderer.render(scene, camera);
+        return;
+      }
+      
       // Throttle to target FPS for performance
       const elapsed = time - lastTime;
       if (elapsed < frameInterval) return;
