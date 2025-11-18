@@ -30,6 +30,14 @@
       z-index:120; box-shadow:0 4px 32px rgba(0,255,255,0.25); max-height:260px; overflow-y:auto; }
     .suggestion-item { padding:8px 20px; cursor:pointer; transition:background .18s; }
     .suggestion-item:hover { background:rgba(0,255,255,0.09); color:cyan; }
+    
+    #nav-controls { pointer-events:auto; position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+      display:flex; gap:12px; z-index:100; }
+    .nav-btn { padding:12px 24px; border:none; border-radius:20px; background:rgba(0,255,255,0.15);
+      color:#fff; cursor:pointer; font-size:0.95em; transition:.3s; -webkit-backdrop-filter:blur(15px); backdrop-filter:blur(15px);
+      box-shadow:0 4px 20px rgba(0,255,255,0.3); font-weight:600; }
+    .nav-btn:hover { background:rgba(0,255,255,0.35); transform:translateY(-3px); box-shadow:0 6px 30px rgba(0,255,255,0.6); }
+    .nav-btn:active { transform:translateY(-1px); }
 
     .city-card {
       position:absolute; padding:24px 32px; border-radius:28px;
@@ -37,7 +45,14 @@
       box-shadow:0 0 50px rgba(0,255,255,0.5); pointer-events:auto;
       animation:float 8s ease-in-out infinite; border:1px solid rgba(0,255,255,0.4);
       transition:.5s cubic-bezier(0.175,0.885,0.32,1.475); width:260px; text-align:center;
+      cursor:move; user-select:none;
     }
+    .close-btn {
+      position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%;
+      background:rgba(255,50,50,0.8); border:none; color:#fff; cursor:pointer;
+      font-size:18px; line-height:1; transition:.3s; display:flex; align-items:center; justify-content:center;
+    }
+    .close-btn:hover { background:rgba(255,20,20,1); transform:scale(1.15); }
     .city-card::before {
       content:''; position:absolute; inset:-4px; border-radius:32px;
       background:conic-gradient(from 0deg at 50% 50%, #00ffff, #ff00ff, #ffff00, #00ff00, #00ffff);
@@ -68,6 +83,12 @@
       <input id="search-input" type="text" placeholder="Add city → Tokyo, Paris, Miami..." autocomplete="off" aria-label="Add city" />
     </div>
     <div id="suggestions" style="display:none" aria-live="polite"></div>
+    <div id="nav-controls">
+      <button class="nav-btn" id="random-city-btn" title="Add random city">🎲 Random City</button>
+      <button class="nav-btn" id="clear-all-btn" title="Clear all cards">🗑️ Clear All</button>
+      <button class="nav-btn" id="toggle-rotate-btn" title="Toggle globe rotation">⏸️ Pause Rotation</button>
+      <button class="nav-btn" id="fullscreen-btn" title="Toggle fullscreen">⛶ Fullscreen</button>
+    </div>
   </div>
 
   <script type="module">
@@ -76,17 +97,94 @@
 
     // ---------- Static demo city & weather data ----------
     const cityData = {
-      Amsterdam: { tz: 'Europe/Amsterdam', temp: 12, weather: 'clouds', desc: 'Partly cloudy', icon: '03d' },
-      London:    { tz: 'Europe/London', temp: 10, weather: 'rain',   desc: 'Rain showers',   icon: '09d' },
-      Tokyo:     { tz: 'Asia/Tokyo',    temp: 20, weather: 'clear',  desc: 'Sunny',          icon: '01d' },
-      'New York':{ tz: 'America/New_York', temp: 7, weather: 'snow', desc: 'Light snow',     icon: '13d' },
-      Dubai:     { tz: 'Asia/Dubai',    temp: 28, weather: 'clear',  desc: 'Sunny',          icon: '01d' },
-      'Los Angeles':{ tz:'America/Los_Angeles', temp:22, weather:'clear', desc:'Sunny', icon:'01d' },
-      Singapore: { tz:'Asia/Singapore', temp:31, weather:'rain', desc:'Heavy rain', icon:'10d' },
-      Sydney:    { tz:'Australia/Sydney', temp:25, weather:'clouds', desc:'Partly cloudy', icon:'02d' },
-      Paris:     { tz:'Europe/Paris', temp:14, weather:'clouds', desc:'Cloudy', icon:'04d' },
-      Miami:     { tz:'America/New_York', temp:27, weather:'rain', desc:'Thunderstorm', icon:'11d' },
-      Berlin:    { tz:'Europe/Berlin', temp:9, weather:'clouds', desc:'Foggy', icon:'50d' }
+      // Europe
+      Amsterdam: { tz: 'Europe/Amsterdam', temp: 12, weather: 'clouds', desc: 'Partly cloudy', icon: '03d', country: 'Netherlands' },
+      London:    { tz: 'Europe/London', temp: 10, weather: 'rain',   desc: 'Rain showers',   icon: '09d', country: 'United Kingdom' },
+      Paris:     { tz:'Europe/Paris', temp:14, weather:'clouds', desc:'Cloudy', icon:'04d', country: 'France' },
+      Berlin:    { tz:'Europe/Berlin', temp:9, weather:'clouds', desc:'Foggy', icon:'50d', country: 'Germany' },
+      Rome:      { tz:'Europe/Rome', temp:18, weather:'clear', desc:'Sunny', icon:'01d', country: 'Italy' },
+      Madrid:    { tz:'Europe/Madrid', temp:16, weather:'clear', desc:'Clear sky', icon:'01d', country: 'Spain' },
+      Vienna:    { tz:'Europe/Vienna', temp:11, weather:'clouds', desc:'Overcast', icon:'04d', country: 'Austria' },
+      Prague:    { tz:'Europe/Prague', temp:8, weather:'clouds', desc:'Cloudy', icon:'03d', country: 'Czech Republic' },
+      Athens:    { tz:'Europe/Athens', temp:20, weather:'clear', desc:'Sunny', icon:'01d', country: 'Greece' },
+      Stockholm: { tz:'Europe/Stockholm', temp:5, weather:'snow', desc:'Light snow', icon:'13d', country: 'Sweden' },
+      Oslo:      { tz:'Europe/Oslo', temp:3, weather:'snow', desc:'Snowing', icon:'13d', country: 'Norway' },
+      Copenhagen:{ tz:'Europe/Copenhagen', temp:7, weather:'rain', desc:'Light rain', icon:'10d', country: 'Denmark' },
+      Helsinki:  { tz:'Europe/Helsinki', temp:2, weather:'snow', desc:'Heavy snow', icon:'13d', country: 'Finland' },
+      Dublin:    { tz:'Europe/Dublin', temp:9, weather:'rain', desc:'Rainy', icon:'09d', country: 'Ireland' },
+      Lisbon:    { tz:'Europe/Lisbon', temp:17, weather:'clear', desc:'Sunny', icon:'01d', country: 'Portugal' },
+      Brussels:  { tz:'Europe/Brussels', temp:10, weather:'clouds', desc:'Cloudy', icon:'03d', country: 'Belgium' },
+      Zurich:    { tz:'Europe/Zurich', temp:8, weather:'clouds', desc:'Partly cloudy', icon:'02d', country: 'Switzerland' },
+      Warsaw:    { tz:'Europe/Warsaw', temp:6, weather:'clouds', desc:'Overcast', icon:'04d', country: 'Poland' },
+      Budapest:  { tz:'Europe/Budapest', temp:12, weather:'clear', desc:'Clear', icon:'01d', country: 'Hungary' },
+      Moscow:    { tz:'Europe/Moscow', temp:-5, weather:'snow', desc:'Cold & snowy', icon:'13d', country: 'Russia' },
+      
+      // Asia
+      Tokyo:     { tz: 'Asia/Tokyo',    temp: 20, weather: 'clear',  desc: 'Sunny',          icon: '01d', country: 'Japan' },
+      Dubai:     { tz: 'Asia/Dubai',    temp: 28, weather: 'clear',  desc: 'Sunny',          icon: '01d', country: 'UAE' },
+      Singapore: { tz:'Asia/Singapore', temp:31, weather:'rain', desc:'Heavy rain', icon:'10d', country: 'Singapore' },
+      Beijing:   { tz:'Asia/Shanghai', temp:15, weather:'clouds', desc:'Smoggy', icon:'50d', country: 'China' },
+      Shanghai:  { tz:'Asia/Shanghai', temp:18, weather:'rain', desc:'Light rain', icon:'10d', country: 'China' },
+      'Hong Kong':{ tz:'Asia/Hong_Kong', temp:26, weather:'clouds', desc:'Humid', icon:'02d', country: 'Hong Kong' },
+      Seoul:     { tz:'Asia/Seoul', temp:12, weather:'clear', desc:'Clear', icon:'01d', country: 'South Korea' },
+      Bangkok:   { tz:'Asia/Bangkok', temp:33, weather:'clear', desc:'Hot & sunny', icon:'01d', country: 'Thailand' },
+      Mumbai:    { tz:'Asia/Kolkata', temp:29, weather:'rain', desc:'Monsoon', icon:'10d', country: 'India' },
+      Delhi:     { tz:'Asia/Kolkata', temp:32, weather:'clear', desc:'Hot', icon:'01d', country: 'India' },
+      Bangalore: { tz:'Asia/Kolkata', temp:24, weather:'clouds', desc:'Pleasant', icon:'02d', country: 'India' },
+      Kolkata:   { tz:'Asia/Kolkata', temp:30, weather:'rain', desc:'Humid rain', icon:'10d', country: 'India' },
+      Jakarta:   { tz:'Asia/Jakarta', temp:30, weather:'rain', desc:'Tropical rain', icon:'10d', country: 'Indonesia' },
+      Manila:    { tz:'Asia/Manila', temp:29, weather:'rain', desc:'Rainy', icon:'09d', country: 'Philippines' },
+      'Kuala Lumpur':{ tz:'Asia/Kuala_Lumpur', temp:31, weather:'rain', desc:'Thunderstorm', icon:'11d', country: 'Malaysia' },
+      Hanoi:     { tz:'Asia/Bangkok', temp:27, weather:'clouds', desc:'Humid', icon:'03d', country: 'Vietnam' },
+      Taipei:    { tz:'Asia/Taipei', temp:23, weather:'rain', desc:'Light rain', icon:'10d', country: 'Taiwan' },
+      Istanbul:  { tz:'Europe/Istanbul', temp:15, weather:'clouds', desc:'Cloudy', icon:'04d', country: 'Turkey' },
+      Tehran:    { tz:'Asia/Tehran', temp:19, weather:'clear', desc:'Sunny', icon:'01d', country: 'Iran' },
+      Riyadh:    { tz:'Asia/Riyadh', temp:35, weather:'clear', desc:'Very hot', icon:'01d', country: 'Saudi Arabia' },
+      Jerusalem: { tz:'Asia/Jerusalem', temp:22, weather:'clear', desc:'Sunny', icon:'01d', country: 'Israel' },
+      
+      // North America
+      'New York':{ tz: 'America/New_York', temp: 7, weather: 'snow', desc: 'Light snow',     icon: '13d', country: 'USA' },
+      'Los Angeles':{ tz:'America/Los_Angeles', temp:22, weather:'clear', desc:'Sunny', icon:'01d', country: 'USA' },
+      Miami:     { tz:'America/New_York', temp:27, weather:'rain', desc:'Thunderstorm', icon:'11d', country: 'USA' },
+      Chicago:   { tz:'America/Chicago', temp:5, weather:'snow', desc:'Snowy', icon:'13d', country: 'USA' },
+      Houston:   { tz:'America/Chicago', temp:20, weather:'clouds', desc:'Cloudy', icon:'03d', country: 'USA' },
+      Phoenix:   { tz:'America/Phoenix', temp:28, weather:'clear', desc:'Hot & dry', icon:'01d', country: 'USA' },
+      Seattle:   { tz:'America/Los_Angeles', temp:12, weather:'rain', desc:'Rainy', icon:'09d', country: 'USA' },
+      Boston:    { tz:'America/New_York', temp:6, weather:'snow', desc:'Cold', icon:'13d', country: 'USA' },
+      'San Francisco':{ tz:'America/Los_Angeles', temp:16, weather:'clouds', desc:'Foggy', icon:'50d', country: 'USA' },
+      'Las Vegas':{ tz:'America/Los_Angeles', temp:25, weather:'clear', desc:'Sunny', icon:'01d', country: 'USA' },
+      Toronto:   { tz:'America/Toronto', temp:4, weather:'snow', desc:'Cold & snowy', icon:'13d', country: 'Canada' },
+      Vancouver: { tz:'America/Vancouver', temp:10, weather:'rain', desc:'Rainy', icon:'09d', country: 'Canada' },
+      Montreal:  { tz:'America/Toronto', temp:2, weather:'snow', desc:'Snowy', icon:'13d', country: 'Canada' },
+      'Mexico City':{ tz:'America/Mexico_City', temp:20, weather:'clear', desc:'Pleasant', icon:'01d', country: 'Mexico' },
+      Havana:    { tz:'America/Havana', temp:26, weather:'clear', desc:'Tropical', icon:'01d', country: 'Cuba' },
+      
+      // South America
+      'Buenos Aires':{ tz:'America/Argentina/Buenos_Aires', temp:24, weather:'clear', desc:'Sunny', icon:'01d', country: 'Argentina' },
+      'Rio de Janeiro':{ tz:'America/Sao_Paulo', temp:28, weather:'clear', desc:'Beach weather', icon:'01d', country: 'Brazil' },
+      'São Paulo':{ tz:'America/Sao_Paulo', temp:25, weather:'rain', desc:'Rainy', icon:'10d', country: 'Brazil' },
+      Lima:      { tz:'America/Lima', temp:22, weather:'clouds', desc:'Overcast', icon:'04d', country: 'Peru' },
+      Bogota:    { tz:'America/Bogota', temp:16, weather:'rain', desc:'Mountain rain', icon:'10d', country: 'Colombia' },
+      Santiago:  { tz:'America/Santiago', temp:23, weather:'clear', desc:'Clear', icon:'01d', country: 'Chile' },
+      Caracas:   { tz:'America/Caracas', temp:27, weather:'clouds', desc:'Tropical', icon:'02d', country: 'Venezuela' },
+      
+      // Africa
+      Cairo:     { tz:'Africa/Cairo', temp:26, weather:'clear', desc:'Sunny', icon:'01d', country: 'Egypt' },
+      'Cape Town':{ tz:'Africa/Johannesburg', temp:21, weather:'clear', desc:'Beautiful', icon:'01d', country: 'South Africa' },
+      Johannesburg:{ tz:'Africa/Johannesburg', temp:19, weather:'clouds', desc:'Partly cloudy', icon:'02d', country: 'South Africa' },
+      Lagos:     { tz:'Africa/Lagos', temp:30, weather:'rain', desc:'Humid rain', icon:'10d', country: 'Nigeria' },
+      Nairobi:   { tz:'Africa/Nairobi', temp:22, weather:'clear', desc:'Pleasant', icon:'01d', country: 'Kenya' },
+      Casablanca:{ tz:'Africa/Casablanca', temp:19, weather:'clear', desc:'Sunny', icon:'01d', country: 'Morocco' },
+      Addis_Ababa:{ tz:'Africa/Addis_Ababa', temp:18, weather:'clouds', desc:'Mild', icon:'03d', country: 'Ethiopia' },
+      
+      // Oceania
+      Sydney:    { tz:'Australia/Sydney', temp:25, weather:'clouds', desc:'Partly cloudy', icon:'02d', country: 'Australia' },
+      Melbourne: { tz:'Australia/Melbourne', temp:20, weather:'rain', desc:'Rainy', icon:'09d', country: 'Australia' },
+      Brisbane:  { tz:'Australia/Brisbane', temp:27, weather:'clear', desc:'Sunny', icon:'01d', country: 'Australia' },
+      Perth:     { tz:'Australia/Perth', temp:28, weather:'clear', desc:'Hot', icon:'01d', country: 'Australia' },
+      Auckland:  { tz:'Pacific/Auckland', temp:18, weather:'clouds', desc:'Cloudy', icon:'03d', country: 'New Zealand' },
+      Wellington:{ tz:'Pacific/Auckland', temp:16, weather:'rain', desc:'Windy & rainy', icon:'09d', country: 'New Zealand' },
+      Fiji:      { tz:'Pacific/Fiji', temp:29, weather:'clear', desc:'Paradise', icon:'01d', country: 'Fiji' }
     };
 
     const weatherGradients = {
@@ -176,14 +274,28 @@
     // ---------- City cards & UI ----------
     const activeCities = ['Amsterdam','Tokyo','New York'];
     const cards = {};
+    
+    // Improved grid-based positioning to prevent overlaps
     function cityCardPosition(idx,total) {
-      const centerX = window.innerWidth/2 - 130;
-      const centerY = window.innerHeight/2 - 100;
-      const spacingX = 320;
-      const spacingY = 180;
-      const offsetX = ((idx%3)-1)*spacingX;
-      const offsetY = (Math.floor(idx/3)-Math.floor(total/6))*spacingY;
-      return { left:`${centerX+offsetX}px`, top:`${centerY+offsetY}px` };
+      const cardWidth = 300;
+      const cardHeight = 280;
+      const padding = 20;
+      const cols = Math.min(Math.ceil(Math.sqrt(total * 1.5)), Math.floor(window.innerWidth / (cardWidth + padding)));
+      const rows = Math.ceil(total / cols);
+      
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      
+      const totalWidth = cols * (cardWidth + padding);
+      const totalHeight = rows * (cardHeight + padding);
+      
+      const startX = (window.innerWidth - totalWidth) / 2;
+      const startY = Math.max(120, (window.innerHeight - totalHeight) / 2);
+      
+      return { 
+        left: `${startX + col * (cardWidth + padding)}px`, 
+        top: `${startY + row * (cardHeight + padding)}px` 
+      };
     }
 
     function svgIconStub(code){
@@ -216,6 +328,7 @@
       const gradient = getWeatherGradient(data.weather);
       const iconSvg = svgIconStub(data.icon);
       card.innerHTML = `
+        <button class="close-btn" aria-label="Remove ${city}" title="Remove card">✕</button>
         <div class="city-name">${city}</div>
         <div class="time" aria-label="Local time">${timeStr}</div>
         <div class="temp" aria-label="Temperature">${data.temp}°C</div>
@@ -223,6 +336,45 @@
         <div class="desc" aria-label="Date">${dateStr}</div>
       `;
       card.style.background = `${gradient}, rgba(255,255,255,0.06)`;
+      
+      // Add close button functionality
+      const closeBtn = card.querySelector('.close-btn');
+      closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        removeCity(city);
+      };
+    }
+    
+    function removeCity(city) {
+      const idx = activeCities.indexOf(city);
+      if(idx === -1) return;
+      
+      const card = cards[city];
+      if(card) {
+        card.style.transition = 'all 0.4s ease-out';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0) rotate(180deg)';
+        setTimeout(() => {
+          card.remove();
+          delete cards[city];
+        }, 400);
+      }
+      
+      activeCities.splice(idx, 1);
+      
+      // Reposition remaining cards
+      setTimeout(() => repositionAllCards(), 450);
+    }
+    
+    function repositionAllCards() {
+      activeCities.forEach((city, idx) => {
+        const card = cards[city];
+        if(card) {
+          const pos = cityCardPosition(idx, activeCities.length);
+          card.style.left = pos.left;
+          card.style.top = pos.top;
+        }
+      });
     }
 
     function addCityWithExplosion(city){
@@ -237,6 +389,36 @@
       card.style.transform='scale(0)';
       document.getElementById('ui-overlay').appendChild(card);
       cards[city] = card;
+      
+      // Add drag functionality
+      let isDragging = false;
+      let currentX, currentY, initialX, initialY;
+      
+      card.addEventListener('mousedown', (e) => {
+        if(e.target.classList.contains('close-btn')) return;
+        isDragging = true;
+        initialX = e.clientX - parseInt(card.style.left || 0);
+        initialY = e.clientY - parseInt(card.style.top || 0);
+        card.style.cursor = 'grabbing';
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if(!isDragging) return;
+        e.preventDefault();
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+        card.style.left = currentX + 'px';
+        card.style.top = currentY + 'px';
+      });
+      
+      document.addEventListener('mouseup', () => {
+        if(isDragging) {
+          isDragging = false;
+          card.style.cursor = 'move';
+          saveCardPositions();
+        }
+      });
+      
       setTimeout(()=>{
         card.style.transition='all 1s cubic-bezier(0.175,0.885,0.32,1.475)';
         card.style.opacity='1';
@@ -244,8 +426,60 @@
         updateCard(card, city);
       },180);
     }
+    
+    // Save/restore card positions to localStorage
+    function saveCardPositions() {
+      const positions = {};
+      activeCities.forEach(city => {
+        const card = cards[city];
+        if(card) {
+          positions[city] = {
+            left: card.style.left,
+            top: card.style.top
+          };
+        }
+      });
+      localStorage.setItem('cardPositions', JSON.stringify(positions));
+      localStorage.setItem('activeCities', JSON.stringify(activeCities));
+    }
+    
+    function restoreCardPositions() {
+      try {
+        const savedCities = JSON.parse(localStorage.getItem('activeCities') || '[]');
+        const savedPositions = JSON.parse(localStorage.getItem('cardPositions') || '{}');
+        
+        if(savedCities.length > 0) {
+          activeCities.length = 0;
+          activeCities.push(...savedCities);
+          
+          savedCities.forEach((city, i) => {
+            if(cityData[city]) {
+              setTimeout(() => {
+                addCityWithExplosion(city);
+                if(savedPositions[city]) {
+                  setTimeout(() => {
+                    const card = cards[city];
+                    if(card) {
+                      card.style.left = savedPositions[city].left;
+                      card.style.top = savedPositions[city].top;
+                    }
+                  }, 200);
+                }
+              }, i * 200);
+            }
+          });
+          return true;
+        }
+      } catch(e) {
+        console.warn('Could not restore positions:', e);
+      }
+      return false;
+    }
 
-    activeCities.forEach((c,i)=>setTimeout(()=>{ if(!cards[c]) addCityWithExplosion(c); }, i*650));
+    // Load saved positions or show default cities
+    if(!restoreCardPositions()) {
+      activeCities.forEach((c,i)=>setTimeout(()=>{ if(!cards[c]) addCityWithExplosion(c); }, i*650));
+    }
 
     // Search suggestions
     const searchInput = document.getElementById('search-input');
@@ -292,6 +526,67 @@
         }
       }
     });
+    
+    // Navigation button handlers
+    document.getElementById('random-city-btn').addEventListener('click', () => {
+      const availableCities = Object.keys(cityData).filter(c => !activeCities.includes(c));
+      if(availableCities.length > 0) {
+        const randomCity = availableCities[Math.floor(Math.random() * availableCities.length)];
+        addCityWithExplosion(randomCity);
+      }
+    });
+    
+    document.getElementById('clear-all-btn').addEventListener('click', () => {
+      if(confirm('Remove all city cards?')) {
+        [...activeCities].forEach(city => removeCity(city));
+        localStorage.removeItem('cardPositions');
+        localStorage.removeItem('activeCities');
+      }
+    });
+    
+    let rotationEnabled = true;
+    const toggleRotateBtn = document.getElementById('toggle-rotate-btn');
+    toggleRotateBtn.addEventListener('click', () => {
+      rotationEnabled = !rotationEnabled;
+      controls.autoRotate = rotationEnabled;
+      toggleRotateBtn.textContent = rotationEnabled ? '⏸️ Pause Rotation' : '▶️ Resume Rotation';
+    });
+    
+    document.getElementById('fullscreen-btn').addEventListener('click', () => {
+      if(!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd + K: Focus search
+      if((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInput.focus();
+      }
+      // Escape: Clear search
+      if(e.key === 'Escape') {
+        searchInput.value = '';
+        updateSuggestions('');
+        searchInput.blur();
+      }
+      // R: Add random city
+      if(e.key === 'r' && !e.ctrlKey && !e.metaKey && document.activeElement !== searchInput) {
+        document.getElementById('random-city-btn').click();
+      }
+      // Space: Toggle rotation
+      if(e.key === ' ' && document.activeElement !== searchInput) {
+        e.preventDefault();
+        toggleRotateBtn.click();
+      }
+      // F: Toggle fullscreen
+      if(e.key === 'f' && !e.ctrlKey && !e.metaKey && document.activeElement !== searchInput) {
+        document.getElementById('fullscreen-btn').click();
+      }
+    });
 
     // ---------- Animation loop ----------
     let lastTime = null;
@@ -325,15 +620,8 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      // Reposition cards
-      activeCities.forEach((city, idx)=>{
-        const card = cards[city];
-        if(card){
-          const pos = cityCardPosition(idx, activeCities.length);
-          card.style.left = pos.left;
-          card.style.top  = pos.top;
-        }
-      });
+      // Reposition cards using improved layout
+      repositionAllCards();
     });
 
     // ---------- Basic error boundary ----------
