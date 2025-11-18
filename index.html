@@ -32,10 +32,10 @@
     .suggestion-item:hover { background:rgba(0,255,255,0.09); color:cyan; }
     
     #nav-controls { pointer-events:auto; position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
-      display:flex; gap:12px; z-index:100; }
+      display:flex; gap:12px; z-index:100; flex-wrap:wrap; justify-content:center; max-width:90vw; }
     .nav-btn { padding:12px 24px; border:none; border-radius:20px; background:rgba(0,255,255,0.15);
       color:#fff; cursor:pointer; font-size:0.95em; transition:.3s; -webkit-backdrop-filter:blur(15px); backdrop-filter:blur(15px);
-      box-shadow:0 4px 20px rgba(0,255,255,0.3); font-weight:600; }
+      box-shadow:0 4px 20px rgba(0,255,255,0.3); font-weight:600; white-space:nowrap; }
     .nav-btn:hover { background:rgba(0,255,255,0.35); transform:translateY(-3px); box-shadow:0 6px 30px rgba(0,255,255,0.6); }
     .nav-btn:active { transform:translateY(-1px); }
 
@@ -48,9 +48,10 @@
       cursor:move; user-select:none;
     }
     .close-btn {
-      position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%;
+      position:absolute; top:8px; right:8px; width:32px; height:32px; border-radius:50%;
       background:rgba(255,50,50,0.8); border:none; color:#fff; cursor:pointer;
       font-size:18px; line-height:1; transition:.3s; display:flex; align-items:center; justify-content:center;
+      min-width:44px; min-height:44px; /* Minimum touch target size for accessibility */
     }
     .close-btn:hover { background:rgba(255,20,20,1); transform:scale(1.15); }
     .city-card::before {
@@ -68,11 +69,49 @@
     @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-30px); } }
     @keyframes pulseBorder { to { transform:rotate(360deg); } }
     ::selection { background:#00ffff; color:#000; }
-    @media (max-width:640px) {
+    @media (max-width:768px) {
+      #nav-controls { bottom:15px; gap:8px; max-width:95vw; }
+      .nav-btn { padding:10px 16px; font-size:0.85em; }
       .city-card { width:220px; padding:20px; }
       .time { font-size:2.4em; }
-      #search-bar { width:82vw; }
-      #search-input { font-size:1em; }
+    }
+    @media (max-width:640px) {
+      .city-card { width:200px; padding:18px; }
+      .city-name { font-size:1.3em; }
+      .time { font-size:2.2em; }
+      .temp { font-size:1.6em; }
+      .weather { font-size:1em; }
+      .icon { width:48px; height:48px; }
+      #search-bar { width:85vw; }
+      #search-input { font-size:1em; padding:14px 20px; }
+      #suggestions { width:85vw; }
+    }
+    @media (max-width:480px) {
+      #nav-controls { bottom:10px; gap:6px; }
+      .nav-btn { padding:10px 14px; font-size:0.8em; }
+      .city-card { width:180px; padding:16px; }
+      .city-name { font-size:1.2em; }
+      .time { font-size:2em; }
+      .temp { font-size:1.4em; }
+      .weather { font-size:0.9em; }
+      .icon { width:42px; height:42px; }
+      #search-bar { width:90vw; top:20px; }
+      #search-input { font-size:0.95em; padding:12px 18px; }
+      #suggestions { width:90vw; top:58px; }
+    }
+    @media (max-width:375px) {
+      .nav-btn { padding:8px 12px; font-size:0.75em; }
+      .city-card { width:160px; padding:14px; }
+      .time { font-size:1.8em; }
+      .temp { font-size:1.3em; }
+      #search-bar { width:92vw; }
+      #suggestions { width:92vw; }
+    }
+    @media (max-width:640px) and (orientation:landscape) {
+      #nav-controls { gap:6px; }
+      .nav-btn { padding:8px 12px; font-size:0.75em; }
+      #search-bar { width:70vw; top:15px; }
+      #suggestions { width:70vw; top:53px; }
     }
   </style>
 </head>
@@ -277,10 +316,15 @@
     
     // Improved grid-based positioning to prevent overlaps
     function cityCardPosition(idx,total) {
-      const cardWidth = 300;
-      const cardHeight = 280;
-      const padding = 20;
-      const cols = Math.min(Math.ceil(Math.sqrt(total * 1.5)), Math.floor(window.innerWidth / (cardWidth + padding)));
+      const isMobile = window.innerWidth <= 768;
+      const isSmallMobile = window.innerWidth <= 480;
+      
+      const cardWidth = isSmallMobile ? 180 : (isMobile ? 220 : 300);
+      const cardHeight = isSmallMobile ? 240 : (isMobile ? 260 : 280);
+      const padding = isMobile ? 10 : 20;
+      
+      const maxCols = isMobile ? (isSmallMobile ? 1 : 2) : Math.floor(window.innerWidth / (cardWidth + padding));
+      const cols = Math.min(Math.ceil(Math.sqrt(total * 1.5)), maxCols);
       const rows = Math.ceil(total / cols);
       
       const col = idx % cols;
@@ -289,8 +333,8 @@
       const totalWidth = cols * (cardWidth + padding);
       const totalHeight = rows * (cardHeight + padding);
       
-      const startX = (window.innerWidth - totalWidth) / 2;
-      const startY = Math.max(120, (window.innerHeight - totalHeight) / 2);
+      const startX = Math.max(padding, (window.innerWidth - totalWidth) / 2);
+      const startY = isMobile ? Math.max(80, (window.innerHeight - totalHeight) / 2) : Math.max(120, (window.innerHeight - totalHeight) / 2);
       
       return { 
         left: `${startX + col * (cardWidth + padding)}px`, 
@@ -394,30 +438,43 @@
       let isDragging = false;
       let currentX, currentY, initialX, initialY;
       
-      card.addEventListener('mousedown', (e) => {
+      const startDrag = (e) => {
         if(e.target.classList.contains('close-btn')) return;
         isDragging = true;
-        initialX = e.clientX - parseInt(card.style.left || 0);
-        initialY = e.clientY - parseInt(card.style.top || 0);
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        initialX = clientX - parseInt(card.style.left || 0);
+        initialY = clientY - parseInt(card.style.top || 0);
         card.style.cursor = 'grabbing';
-      });
+      };
       
-      document.addEventListener('mousemove', (e) => {
+      const doDrag = (e) => {
         if(!isDragging) return;
         e.preventDefault();
-        currentX = e.clientX - initialX;
-        currentY = e.clientY - initialY;
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        currentX = clientX - initialX;
+        currentY = clientY - initialY;
         card.style.left = currentX + 'px';
         card.style.top = currentY + 'px';
-      });
+      };
       
-      document.addEventListener('mouseup', () => {
+      const endDrag = () => {
         if(isDragging) {
           isDragging = false;
           card.style.cursor = 'move';
           saveCardPositions();
         }
-      });
+      };
+      
+      card.addEventListener('mousedown', startDrag);
+      card.addEventListener('touchstart', startDrag, { passive: false });
+      
+      document.addEventListener('mousemove', doDrag);
+      document.addEventListener('touchmove', doDrag, { passive: false });
+      
+      document.addEventListener('mouseup', endDrag);
+      document.addEventListener('touchend', endDrag);
       
       setTimeout(()=>{
         card.style.transition='all 1s cubic-bezier(0.175,0.885,0.32,1.475)';
